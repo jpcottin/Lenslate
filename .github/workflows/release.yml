@@ -33,7 +33,7 @@ jobs:
         run: cp app/build/outputs/apk/release/app-release-unsigned.apk "Lenslate-${GITHUB_REF_NAME}-unsigned.apk"
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: Lenslate-*-unsigned.apk
           generate_release_notes: true
