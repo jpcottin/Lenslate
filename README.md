@@ -54,7 +54,7 @@ official Android agent skills (`base`, `display-ai-glasses-with-jetpack-compose-
 
 ### Run on the emulator
 
-You need two AVDs, paired with each other: a **phone** (Google APIs image, API 35+; a foldable
+You need two AVDs, paired with each other: a **phone** (Google APIs image, API 36+; a foldable
 profile is handy to check the adaptive layout) and the **Display AI Glasses** emulator
 (`system-images/android-36/ai-glasses`). The glasses activity runs on the phone and is projected
 to the glasses.
@@ -108,7 +108,7 @@ Emulator caveats observed with the current images:
 
 ### CI
 
-Unit, screenshot and R8 release jobs, an emulator matrix (API 35/36 blocking, API 37.x 16 KB
+Unit, screenshot and R8 release jobs, an emulator matrix (API 36 blocking, API 37.x 16 KB
 page-size previews non-blocking), plus an Android CLI leg that installs the canary emulator,
 runs the app and verifies an injected utterance with `android layout`.
 

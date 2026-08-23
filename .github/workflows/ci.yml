@@ -86,14 +86,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # minSdk is 35. google_apis images ship the on-device speech stack
+          # minSdk is 36 (ProjectedContext.isProjectedDeviceConnected needs it).
+          # google_apis images ship the on-device speech stack
           # (com.google.android.as) and ML Kit's Play Services dependencies.
-          - api-level: '35'
-            target: google_apis
-            gpu: swiftshader_indirect
           - api-level: '36'
             target: google_apis
-            gpu: auto
+            gpu: swiftshader_indirect
           - api-level: '37.0'
             suffix: 'stable-lavapipe'
             target: google_apis_ps16k
