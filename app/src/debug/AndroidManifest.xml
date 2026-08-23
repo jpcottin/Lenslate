@@ -8,8 +8,8 @@
             android:exported="true"
             tools:ignore="ExportedReceiver">
             <intent-filter>
-                <action android:name="io.github.jpcottin.lenslate.debug.UTTERANCE" />
-                <action android:name="io.github.jpcottin.lenslate.debug.READ_IMAGE" />
+                <action android:name="com.jpcottin.lenslate.debug.UTTERANCE" />
+                <action android:name="com.jpcottin.lenslate.debug.READ_IMAGE" />
             </intent-filter>
         </receiver>
     </application>

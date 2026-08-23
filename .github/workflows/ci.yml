@@ -299,9 +299,9 @@ jobs:
           export PATH="$SDK/platform-tools:$PATH"
           ./gradlew :app:assembleDebug
           android run --apks app/build/outputs/apk/debug/app-debug.apk
-          adb shell pm grant io.github.jpcottin.lenslate android.permission.RECORD_AUDIO
+          adb shell pm grant com.jpcottin.lenslate android.permission.RECORD_AUDIO
           sleep 5
-          adb shell "am broadcast -a io.github.jpcottin.lenslate.debug.UTTERANCE -p io.github.jpcottin.lenslate --es text 'Bonjour tout le monde' --es from fr --es to en"
+          adb shell "am broadcast -a com.jpcottin.lenslate.debug.UTTERANCE -p com.jpcottin.lenslate --es text 'Bonjour tout le monde' --es from fr --es to en"
           # The first translation downloads the FR→EN models; poll the layout for the result.
           for _ in $(seq 1 24); do
             android layout > layout.json || true
@@ -310,8 +310,8 @@ jobs:
           done
           grep -qi "hello everyone" layout.json || { echo "ERROR: translation not found in layout"; cat layout.json; exit 1; }
           # Read mode: OCR a French sign image through the debug receiver and expect its translation.
-          adb push docs/test-images/sign-fr.png /sdcard/Android/data/io.github.jpcottin.lenslate/files/sign-fr.png
-          adb shell "am broadcast -a io.github.jpcottin.lenslate.debug.READ_IMAGE -p io.github.jpcottin.lenslate --es path sign-fr.png --es from fr --es to en"
+          adb push docs/test-images/sign-fr.png /sdcard/Android/data/com.jpcottin.lenslate/files/sign-fr.png
+          adb shell "am broadcast -a com.jpcottin.lenslate.debug.READ_IMAGE -p com.jpcottin.lenslate --es path sign-fr.png --es from fr --es to en"
           for _ in $(seq 1 24); do
             android layout > layout.json || true
             grep -qiE "emergency exit|exit" layout.json && break

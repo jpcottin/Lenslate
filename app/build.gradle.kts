@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace = "io.github.jpcottin.lenslate"
+    namespace = "com.jpcottin.lenslate"
     // AppFunctions and the Jetpack XR projected APIs need compileSdk 37.
     compileSdk = 37
 
@@ -15,7 +15,7 @@ android {
     experimentalProperties["android.experimental.enableScreenshotTest"] = true
 
     defaultConfig {
-        applicationId = "io.github.jpcottin.lenslate"
+        applicationId = "com.jpcottin.lenslate"
         // ProjectedContext.isProjectedDeviceConnected() needs API 36: the phone that hosts the
         // glasses activity must run at least Android 16.
         minSdk = 36

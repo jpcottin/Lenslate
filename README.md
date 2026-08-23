@@ -30,7 +30,7 @@ Lenslate is a *hybrid* app, following the [AI glasses activity model](https://de
 | Surface | Activity | UI toolkit | Role |
 |---|---|---|---|
 | Phone | `MainActivity` | Material 3 (adaptive, Navigation 3) | Pick the language pair, manage offline models, choose the engine, read the transcript, **Launch on glasses** |
-| Glasses | `GlassesActivity` (`xr_projected`) | [Jetpack Compose Glimmer](https://developer.android.com/develop/xr/jetpack-xr-sdk/jetpack-compose-glimmer) | One bottom-aligned card: latest translation, original sentence underneath, `FR → EN` title chip; two icon buttons under it — swipe the touchpad to move focus between *listen* and *read*, tap to activate; the glasses’ hardware **camera button** triggers Read directly |
+| Glasses | `GlassesActivity` (`xr_projected`) | [Jetpack Compose Glimmer](https://developer.android.com/develop/xr/jetpack-xr-sdk/jetpack-compose-glimmer) | One bottom-aligned card: latest translation, original sentence underneath, `FR → EN` title chip; tap the touchpad to pause/resume listening (the card holds the focus), swipe to the camera icon and tap — or press the glasses’ hardware **camera button** — to read |
 
 Both surfaces observe the **same** `LiveTranslator` pipeline, so the phone shows live what the
 glasses are hearing. Only one microphone is active at a time: launching the glasses activity
@@ -92,12 +92,12 @@ a broadcast receiver that drives both modes from the shell (quote the whole comm
 
 ```sh
 # Listen: inject a sentence as if it had been heard
-adb -s emulator-5554 shell "am broadcast -a io.github.jpcottin.lenslate.debug.UTTERANCE \
-    -p io.github.jpcottin.lenslate --es text 'Bonjour tout le monde'"
+adb -s emulator-5554 shell "am broadcast -a com.jpcottin.lenslate.debug.UTTERANCE \
+    -p com.jpcottin.lenslate --es text 'Bonjour tout le monde'"
 # Read: OCR an image as if the camera had captured it
-adb -s emulator-5554 push docs/test-images/sign-fr.png /sdcard/Android/data/io.github.jpcottin.lenslate/files/sign-fr.png
-adb -s emulator-5554 shell "am broadcast -a io.github.jpcottin.lenslate.debug.READ_IMAGE \
-    -p io.github.jpcottin.lenslate --es path sign-fr.png"
+adb -s emulator-5554 push docs/test-images/sign-fr.png /sdcard/Android/data/com.jpcottin.lenslate/files/sign-fr.png
+adb -s emulator-5554 shell "am broadcast -a com.jpcottin.lenslate.debug.READ_IMAGE \
+    -p com.jpcottin.lenslate --es path sign-fr.png"
 android layout --device emulator-5554 | grep -iE "hello|exit"   # translations are in the UI tree
 ```
 
