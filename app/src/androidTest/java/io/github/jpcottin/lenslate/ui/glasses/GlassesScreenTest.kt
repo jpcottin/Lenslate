@@ -3,11 +3,15 @@ package io.github.jpcottin.lenslate.ui.glasses
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.xr.glimmer.GlimmerTheme
 import io.github.jpcottin.lenslate.domain.Language
 import io.github.jpcottin.lenslate.domain.LiveTranslationState
+import io.github.jpcottin.lenslate.domain.LiveTranslator
+import io.github.jpcottin.lenslate.domain.UtteranceKind
 import io.github.jpcottin.lenslate.domain.Utterance
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -18,7 +22,12 @@ class GlassesScreenTest {
     @get:Rule
     val composeTestRule = createAndroidComposeRule<ComponentActivity>()
 
-    private fun setContent(live: LiveTranslationState, showSource: Boolean = true, onToggle: () -> Unit = {}) =
+    private fun setContent(
+        live: LiveTranslationState,
+        showSource: Boolean = true,
+        onToggle: () -> Unit = {},
+        onRead: () -> Unit = {},
+    ) =
         composeTestRule.setContent {
             GlimmerTheme {
                 GlassesScreen(
@@ -27,6 +36,7 @@ class GlassesScreenTest {
                     isVisualUiSupported = true,
                     permissionDenied = false,
                     onToggleListening = onToggle,
+                    onRead = onRead,
                     onRetryPermission = {},
                     onExit = {},
                 )
@@ -60,11 +70,39 @@ class GlassesScreenTest {
     }
 
     @Test
-    fun tappingCard_togglesListening() {
+    fun listenButton_togglesListening() {
         var toggles = 0
         setContent(LiveTranslationState(isListening = false), onToggle = { toggles++ })
         composeTestRule.onNodeWithText("Paused").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Tap to listen").performClick()
+        composeTestRule.onNodeWithText("Tap to listen").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Start or stop listening").performClick()
         assertEquals(1, toggles)
+    }
+
+    @Test
+    fun readButton_readsText_andIsDisabledWhileReading() {
+        var reads = 0
+        setContent(LiveTranslationState(isListening = true), onRead = { reads++ })
+        composeTestRule.onNodeWithContentDescription("Read text with the camera").performClick()
+        assertEquals(1, reads)
+    }
+
+    @Test
+    fun readingState_andReadUtterance_areShown() {
+        setContent(
+            LiveTranslationState(
+                isReading = true,
+                utterances = listOf(Utterance(1, "SORTIE DE SECOURS", "EMERGENCY EXIT", kind = UtteranceKind.READ)),
+            )
+        )
+        composeTestRule.onNodeWithText("Reading…").assertIsDisplayed()
+        composeTestRule.onNodeWithText("EMERGENCY EXIT").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Read text with the camera").assertIsNotEnabled()
+    }
+
+    @Test
+    fun noTextFound_isExplained() {
+        setContent(LiveTranslationState(isListening = false, error = LiveTranslator.NO_TEXT_FOUND))
+        composeTestRule.onNodeWithText("Error: No text found. Try getting closer or improving the light.").assertIsDisplayed()
     }
 }

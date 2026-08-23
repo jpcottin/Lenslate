@@ -2,21 +2,26 @@
 
 [![CI](https://github.com/jpcottin/Lenslate/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/jpcottin/Lenslate/actions/workflows/ci.yml)
 
-A live translator for **Display AI Glasses**. Lenslate listens to what is being said around you,
-translates it on the phone, and shows the translation on the lens as glanceable subtitles — with
-optional text-to-speech in the glasses' speakers.
+A live translator for **Display AI Glasses**. Lenslate listens to what is being said around you —
+or reads the sign, menu or label you are looking at — translates it on the phone, and shows the
+translation on the lens as a glanceable card, with optional text-to-speech in the glasses'
+speakers.
 
 ```
- glasses mic ──► SpeechRecognizer (on-device) ──► ML Kit Translate (offline)
-                                                   or Gemini (cloud, optional) ──► Glimmer card on the lens
-                                                                                  + TTS in the ear
+ Listen: glasses mic ──► SpeechRecognizer (on-device) ─┐
+                                                        ├─► ML Kit Translate (offline)      ──► Glimmer card on the lens
+ Read:   glasses camera ──► ML Kit Text Recognition ────┘   or Gemini (cloud, your API key)      + TTS in the ear
 ```
 
 Supported languages: **English, French, Spanish, German, Japanese** (any pair).
 
-| On the lens (Display AI Glasses emulator, 450×394) | On the phone (foldable emulator) |
+| Listen — on the lens (Display AI Glasses emulator, 450×394) | Read — a sign, OCR'd and translated on the lens |
 |:---:|:---:|
-| <img src="docs/screenshots/lens-translated.png" width="450" alt="Glimmer card on the glasses showing the English translation of a French sentence, with the original sentence underneath and a FR → EN title chip"> | <img src="docs/screenshots/phone-home.png" width="360" alt="Phone home screen with the glasses connection card, language pair, and the live transcript"> |
+| <img src="docs/screenshots/lens-translated.png" width="450" alt="Glimmer card on the glasses showing the English translation of a French sentence, with the original sentence underneath and a FR → EN title chip"> | <img src="docs/screenshots/lens-read.png" width="450" alt="Glimmer card on the glasses showing the English translation of a French emergency-exit sign, with the recognized text underneath and a camera icon in the title chip"> |
+
+| On the phone (foldable emulator) |
+|:---:|
+| <img src="docs/screenshots/phone-home.png" width="480" alt="Phone home screen with the glasses connection card, language pair, and the live transcript"> |
 
 ## How it works
 
@@ -25,12 +30,23 @@ Lenslate is a *hybrid* app, following the [AI glasses activity model](https://de
 | Surface | Activity | UI toolkit | Role |
 |---|---|---|---|
 | Phone | `MainActivity` | Material 3 (adaptive, Navigation 3) | Pick the language pair, manage offline models, choose the engine, read the transcript, **Launch on glasses** |
-| Glasses | `GlassesActivity` (`xr_projected`) | [Jetpack Compose Glimmer](https://developer.android.com/develop/xr/jetpack-xr-sdk/jetpack-compose-glimmer) | One bottom-aligned card: latest translation, original sentence underneath, `FR → EN` title chip; tap the touchpad to pause/resume |
+| Glasses | `GlassesActivity` (`xr_projected`) | [Jetpack Compose Glimmer](https://developer.android.com/develop/xr/jetpack-xr-sdk/jetpack-compose-glimmer) | One bottom-aligned card: latest translation, original sentence underneath, `FR → EN` title chip; two icon buttons under it — swipe the touchpad to move between *listen* and *read*, tap to activate |
 
 Both surfaces observe the **same** `LiveTranslator` pipeline, so the phone shows live what the
 glasses are hearing. Only one microphone is active at a time: launching the glasses activity
 hands the mic over to the glasses (its projected context makes `SpeechRecognizer` capture from
 the glasses' microphone); the phone's *Listen* button uses the phone's.
+
+### Listen and Read
+
+- **Listen** — continuous speech recognition in the source language (on-device when the phone
+  has it, otherwise the default recognition service), sentence by sentence; interim hypotheses are
+  translated live on-device.
+- **Read** — one snapshot: on the glasses, the outward camera through the projected context
+  (CameraX `ImageCapture`, bound only for the capture so nothing streams otherwise); on the phone,
+  a viewfinder with a shutter. The snapshot goes through ML Kit Text Recognition v2 (Latin model,
+  Japanese model for `ja`), lines are joined into one sentence and translated like speech. Read
+  results show a camera icon in the transcript.
 
 ### Translation engines
 
@@ -70,15 +86,22 @@ android run --apks app/build/outputs/apk/debug/app-debug.apk --device emulator-5
 Then tap **Launch on glasses** in the phone app (enabled as soon as the phone sees the
 projected device).
 
-Emulators have no usable microphone, so debug builds ship a broadcast receiver that injects a
-sentence into the pipeline as if it had been heard (quote the sentence for the *device* shell,
-or only the first word gets through):
+Emulators have no usable microphone and their camera shows a virtual scene, so debug builds ship
+a broadcast receiver that drives both modes from the shell (quote the whole command for the
+*device* shell, or only the first word gets through):
 
 ```sh
+# Listen: inject a sentence as if it had been heard
 adb -s emulator-5554 shell "am broadcast -a io.github.jpcottin.lenslate.debug.UTTERANCE \
     -p io.github.jpcottin.lenslate --es text 'Bonjour tout le monde'"
-android layout --device emulator-5554 | grep -i hello     # the translation is in the UI tree
+# Read: OCR an image as if the camera had captured it
+adb -s emulator-5554 push docs/test-images/sign-fr.png /sdcard/Android/data/io.github.jpcottin.lenslate/files/sign-fr.png
+adb -s emulator-5554 shell "am broadcast -a io.github.jpcottin.lenslate.debug.READ_IMAGE \
+    -p io.github.jpcottin.lenslate --es path sign-fr.png"
+android layout --device emulator-5554 | grep -iE "hello|exit"   # translations are in the UI tree
 ```
+
+Both actions accept `--es from fr --es to en` to pin the language pair first.
 
 To see what the lens shows, capture the phone's virtual *ProjectionDisplay* (the glasses AVD's
 own framebuffer stays black):
@@ -102,21 +125,20 @@ Emulator caveats observed with the current images:
 
 | Suite | Command | What it covers |
 |---|---|---|
-| Unit | `./gradlew :app:testDebugUnitTest` | `LiveTranslator` pipeline (partials, debounce, errors, mic hand-over), Gemini client against `MockWebServer`, settings mapping |
-| Screenshot | `./gradlew :app:validateDebugScreenshotTest` (`updateDebugScreenshotTest` to re-record) | Phone screens on phone/foldable/tablet, glasses card at the lens' 450×394 dp |
-| Instrumented | `./gradlew :app:connectedDebugAndroidTest` | Compose UI tests for both surfaces, and an end-to-end test that injects a sentence and checks the on-device translation |
+| Unit | `./gradlew :app:testDebugUnitTest` | `LiveTranslator` pipeline (partials, debounce, errors, mic hand-over, Read mode with fake camera/OCR), Gemini client against `MockWebServer`, settings mapping, model repository |
+| Screenshot | `./gradlew :app:validateDebugScreenshotTest` (`updateDebugScreenshotTest` to re-record) | Phone screens on phone/foldable/tablet (home, settings, read), glasses card at the lens' 450×394 dp (listening, reading, read result, errors) |
+| Instrumented | `./gradlew :app:connectedDebugAndroidTest` | Compose UI tests for both surfaces, the AppFunction handler, ML Kit OCR on a rendered sign, and end-to-end tests that inject a sentence / read a sign and check the on-device translation |
 
 ### CI
 
 Unit, screenshot and R8 release jobs, an emulator matrix (API 36 blocking, API 37.x 16 KB
 page-size previews non-blocking), plus an Android CLI leg that installs the canary emulator,
-runs the app and verifies an injected utterance with `android layout`.
+runs the app and verifies an injected utterance and an OCR'd sign with `android layout`.
 
 ## Roadmap
 
-- **Read mode**: tap to snapshot what you are looking at with the glasses' camera (CameraX via
-  the projected context) → ML Kit Text Recognition → same translator.
 - Conversation mode (alternate directions automatically).
+- Japanese OCR quality checks on real signs (vertical text).
 
 ## License
 

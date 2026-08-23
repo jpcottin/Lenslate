@@ -17,6 +17,14 @@
     <string name="listening">Listening…</string>
     <string name="transcript_empty">Tap Listen and start talking. Translations appear here and on your glasses.</string>
     <string name="clear_transcript">Clear transcript</string>
+    <string name="read">Read</string>
+    <string name="read_title">Read text</string>
+    <string name="read_hint">Point the camera at a sign or a menu and tap the shutter.</string>
+    <string name="read_capture">Capture</string>
+    <string name="reading">Reading…</string>
+    <string name="read_no_text">No text found. Try getting closer or improving the light.</string>
+    <string name="camera_permission_denied">Camera permission denied. Enable it in system settings to use Read mode.</string>
+    <string name="camera_unavailable">No camera available.</string>
     <string name="mic_permission_denied">Microphone permission denied. Enable it in system settings to use Listen mode.</string>
     <string name="models_downloading">Downloading %1$s models…</string>
     <string name="engine_on_device">On-device</string>
@@ -51,6 +59,9 @@
     <string name="glasses_paused">Paused</string>
     <string name="glasses_tap_to_listen">Tap to listen</string>
     <string name="glasses_permission_needed">Microphone access is needed to translate speech.</string>
+    <string name="glasses_camera_permission_needed">Camera access is needed to read text.</string>
+    <string name="glasses_read">Read text with the camera</string>
+    <string name="glasses_listen_toggle">Start or stop listening</string>
     <string name="glasses_retry">Retry</string>
     <string name="glasses_exit">Exit</string>
     <string name="glasses_audio_only">Audio guidance mode: translations are spoken aloud.</string>

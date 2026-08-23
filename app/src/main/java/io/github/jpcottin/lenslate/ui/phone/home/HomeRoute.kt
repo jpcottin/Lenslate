@@ -20,6 +20,7 @@ import io.github.jpcottin.lenslate.ui.glasses.GlassesLauncher
 @Composable
 fun HomeRoute(
     onOpenSettings: () -> Unit,
+    onOpenRead: () -> Unit,
     viewModel: HomeViewModel = homeViewModel(),
 ) {
     val context = LocalContext.current
@@ -27,11 +28,16 @@ fun HomeRoute(
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val glassesConnected by viewModel.glassesConnected.collectAsStateWithLifecycle()
     var micDenied by remember { mutableStateOf(false) }
+    var cameraDenied by remember { mutableStateOf(false) }
     var launchError by remember { mutableStateOf<String?>(null) }
 
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         micDenied = !granted
         if (granted) viewModel.toggleListening()
+    }
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        cameraDenied = !granted
+        if (granted) onOpenRead()
     }
 
     HomeScreen(
@@ -39,12 +45,18 @@ fun HomeRoute(
         settings = settings,
         glassesConnected = glassesConnected,
         micPermissionDenied = micDenied,
+        cameraPermissionDenied = cameraDenied,
         launchError = launchError,
         onToggleListening = {
             val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
                 PackageManager.PERMISSION_GRANTED
             if (granted || live.isListening) viewModel.toggleListening()
             else permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        },
+        onRead = {
+            val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
+                PackageManager.PERMISSION_GRANTED
+            if (granted) onOpenRead() else cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
         },
         onSetLanguages = viewModel::setLanguages,
         onSwapLanguages = viewModel::swapLanguages,

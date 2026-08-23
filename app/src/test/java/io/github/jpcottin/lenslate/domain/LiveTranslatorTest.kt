@@ -232,4 +232,81 @@ class LiveTranslatorTest {
         translator.clear()
         assertTrue(translator.state.value.utterances.isEmpty())
     }
+
+    private class FakeCapture(var fail: Boolean = false) : FrameCapture {
+        var calls = 0
+        override suspend fun capture(): Frame {
+            calls++
+            if (fail) throw TextRecognitionException("Camera capture failed")
+            return Frame(bitmap = fakeBitmap())
+        }
+    }
+
+    private class FakeRecognizer(var text: String) : TextRecognizer {
+        var lastLanguage: Language? = null
+        override suspend fun recognize(frame: Frame, language: Language): String {
+            lastLanguage = language
+            return text
+        }
+    }
+
+    @Test
+    fun readText_recognizesInSourceLanguage_andTranslatesAsReadUtterance() = runTest {
+        val translator = translator()
+        translator.setLanguages(Language.GERMAN, Language.ENGLISH)
+        val recognizer = FakeRecognizer("AUSGANG\n  bitte frei halten \n")
+        val capture = FakeCapture()
+
+        val text = translator.readText(capture, recognizer)
+        advanceUntilIdle()
+
+        assertEquals("AUSGANG bitte frei halten", text)
+        assertEquals(Language.GERMAN, recognizer.lastLanguage)
+        assertEquals(1, capture.calls)
+        val latest = translator.state.value.latest!!
+        assertEquals(UtteranceKind.READ, latest.kind)
+        assertEquals("[de→en] AUSGANG bitte frei halten", latest.translation)
+        assertFalse(translator.state.value.isReading)
+        assertNull(translator.state.value.error)
+    }
+
+    @Test
+    fun readText_reportsNoTextFound() = runTest {
+        val translator = translator()
+        val text = translator.readText(FakeCapture(), FakeRecognizer("  \n "))
+        assertNull(text)
+        assertEquals(LiveTranslator.NO_TEXT_FOUND, translator.state.value.error)
+        assertTrue(translator.state.value.utterances.isEmpty())
+        assertFalse(translator.state.value.isReading)
+    }
+
+    @Test
+    fun readText_reportsCaptureFailure() = runTest {
+        val translator = translator()
+        val text = translator.readText(FakeCapture(fail = true), FakeRecognizer("ignored"))
+        assertNull(text)
+        assertEquals("Camera capture failed", translator.state.value.error)
+        assertFalse(translator.state.value.isReading)
+    }
+
+    @Test
+    fun readText_emitsTranslatedWithReadKind() = runTest {
+        val translator = translator()
+        translator.translated.test {
+            translator.readText(FakeCapture(), FakeRecognizer("Bonjour"))
+            advanceUntilIdle()
+            val emitted = awaitItem()
+            assertEquals(UtteranceKind.READ, emitted.kind)
+            assertEquals("[fr→en] Bonjour", emitted.translation)
+        }
+    }
+
+    private companion object {
+        /** android.graphics.Bitmap is a stub on the JVM; allocate one without running the stub constructor. */
+        fun fakeBitmap(): android.graphics.Bitmap {
+            val unsafeField = sun.misc.Unsafe::class.java.getDeclaredField("theUnsafe").apply { isAccessible = true }
+            val unsafe = unsafeField.get(null) as sun.misc.Unsafe
+            return unsafe.allocateInstance(android.graphics.Bitmap::class.java) as android.graphics.Bitmap
+        }
+    }
 }

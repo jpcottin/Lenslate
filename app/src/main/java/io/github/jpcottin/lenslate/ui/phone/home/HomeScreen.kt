@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -18,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.DeleteSweep
 import androidx.compose.material.icons.rounded.Mic
+import androidx.compose.material.icons.rounded.PhotoCamera
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material.icons.rounded.SwapHoriz
@@ -39,6 +41,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SmallFloatingActionButton
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
@@ -51,6 +55,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Devices
@@ -62,6 +68,8 @@ import io.github.jpcottin.lenslate.data.settings.Settings
 import io.github.jpcottin.lenslate.domain.EngineKind
 import io.github.jpcottin.lenslate.domain.Language
 import io.github.jpcottin.lenslate.domain.LiveTranslationState
+import io.github.jpcottin.lenslate.domain.LiveTranslator
+import io.github.jpcottin.lenslate.domain.UtteranceKind
 import io.github.jpcottin.lenslate.domain.Utterance
 import io.github.jpcottin.lenslate.ui.preview.PreviewData
 import io.github.jpcottin.lenslate.ui.theme.LenslateTheme
@@ -79,12 +87,14 @@ fun HomeScreen(
     micPermissionDenied: Boolean,
     launchError: String?,
     onToggleListening: () -> Unit,
+    onRead: () -> Unit,
     onSetLanguages: (Language, Language) -> Unit,
     onSwapLanguages: () -> Unit,
     onClearTranscript: () -> Unit,
     onOpenSettings: () -> Unit,
     onLaunchOnGlasses: () -> Unit,
     modifier: Modifier = Modifier,
+    cameraPermissionDenied: Boolean = false,
     isWideWindow: Boolean = currentWindowAdaptiveInfo().windowSizeClass
         .isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND),
 ) {
@@ -104,23 +114,34 @@ fun HomeScreen(
             )
         },
         floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = onToggleListening,
-                icon = {
-                    Icon(
-                        if (live.isListening) Icons.Rounded.Stop else Icons.Rounded.Mic,
-                        contentDescription = null,
-                    )
-                },
-                text = { Text(stringResource(if (live.isListening) R.string.stop_listening else R.string.listen)) },
-            )
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                val readLabel = stringResource(R.string.read)
+                SmallFloatingActionButton(
+                    onClick = onRead,
+                    modifier = Modifier.semantics { contentDescription = readLabel },
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                ) {
+                    if (live.isReading) CircularProgressIndicator(Modifier.size(20.dp))
+                    else Icon(Icons.Rounded.PhotoCamera, contentDescription = null)
+                }
+                ExtendedFloatingActionButton(
+                    onClick = onToggleListening,
+                    icon = {
+                        Icon(
+                            if (live.isListening) Icons.Rounded.Stop else Icons.Rounded.Mic,
+                            contentDescription = null,
+                        )
+                    },
+                    text = { Text(stringResource(if (live.isListening) R.string.stop_listening else R.string.listen)) },
+                )
+            }
         },
     ) { innerPadding ->
         val controls: @Composable (Modifier) -> Unit = { m ->
             Column(m, verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 GlassesCard(glassesConnected, launchError, onLaunchOnGlasses)
                 LanguagePairCard(settings, onSetLanguages, onSwapLanguages)
-                StatusBanner(live, settings, micPermissionDenied)
+                StatusBanner(live, settings, micPermissionDenied, cameraPermissionDenied)
             }
         }
         if (isWideWindow) {
@@ -247,7 +268,12 @@ private fun LanguageDropdown(
 }
 
 @Composable
-private fun StatusBanner(live: LiveTranslationState, settings: Settings, micPermissionDenied: Boolean) {
+private fun StatusBanner(
+    live: LiveTranslationState,
+    settings: Settings,
+    micPermissionDenied: Boolean,
+    cameraPermissionDenied: Boolean,
+) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             AssistChip(
@@ -265,6 +291,10 @@ private fun StatusBanner(live: LiveTranslationState, settings: Settings, micPerm
                 Icon(Icons.Rounded.Mic, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 Text(stringResource(R.string.listening), style = MaterialTheme.typography.labelLarge)
             }
+            if (live.isReading) {
+                Icon(Icons.Rounded.PhotoCamera, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Text(stringResource(R.string.reading), style = MaterialTheme.typography.labelLarge)
+            }
         }
         if (live.isPreparing) {
             LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -275,6 +305,8 @@ private fun StatusBanner(live: LiveTranslationState, settings: Settings, micPerm
         }
         val error = when {
             micPermissionDenied -> stringResource(R.string.mic_permission_denied)
+            cameraPermissionDenied -> stringResource(R.string.camera_permission_denied)
+            live.error == LiveTranslator.NO_TEXT_FOUND -> stringResource(R.string.read_no_text)
             live.error != null -> live.error
             else -> null
         }
@@ -335,8 +367,8 @@ private fun UtteranceItem(utterance: Utterance, isPartial: Boolean = false) {
             )
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Icon(
-                    Icons.AutoMirrored.Rounded.ArrowForward,
-                    contentDescription = null,
+                    if (utterance.kind == UtteranceKind.READ) Icons.Rounded.PhotoCamera else Icons.AutoMirrored.Rounded.ArrowForward,
+                    contentDescription = if (utterance.kind == UtteranceKind.READ) stringResource(R.string.read) else null,
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.width(16.dp),
                 )
@@ -361,6 +393,7 @@ private fun HomeScreenPreview() {
             micPermissionDenied = false,
             launchError = null,
             onToggleListening = {},
+            onRead = {},
             onSetLanguages = { _, _ -> },
             onSwapLanguages = {},
             onClearTranscript = {},
@@ -382,6 +415,7 @@ private fun HomeScreenWidePreview() {
             micPermissionDenied = false,
             launchError = null,
             onToggleListening = {},
+            onRead = {},
             onSetLanguages = { _, _ -> },
             onSwapLanguages = {},
             onClearTranscript = {},

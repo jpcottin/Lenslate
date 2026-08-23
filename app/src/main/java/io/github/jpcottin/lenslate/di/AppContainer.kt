@@ -11,6 +11,7 @@ import io.github.jpcottin.lenslate.data.speech.InjectableSpeechSource
 import io.github.jpcottin.lenslate.data.translate.GeminiTranslationEngine
 import io.github.jpcottin.lenslate.data.translate.MlKitTranslationEngine
 import io.github.jpcottin.lenslate.data.translate.ModelRepository
+import io.github.jpcottin.lenslate.data.ocr.MlKitTextRecognizer
 import io.github.jpcottin.lenslate.data.tts.TranslationSpeaker
 import io.github.jpcottin.lenslate.domain.EngineKind
 import io.github.jpcottin.lenslate.domain.LiveTranslator
@@ -69,6 +70,9 @@ class AppContainer(private val appContext: Context) {
 
     val speaker = TranslationSpeaker(appContext)
 
+    /** On-device OCR for Read mode. */
+    val textRecognizer = MlKitTextRecognizer()
+
     init {
         appScope.launch {
             liveTranslator.translated.collect { utterance ->
@@ -89,13 +93,14 @@ class AppContainer(private val appContext: Context) {
     fun speechSource(context: Context): SpeechSource = InjectableSpeechSource(AndroidSpeechSource(context))
 
     /**
-     * The phone's microphone, explicitly via the host device context: the application context can
-     * resolve to the glasses' device when a projected activity was the last one in front.
+     * The phone's own context, explicitly via the host device context: the application context
+     * can resolve to the glasses' device when a projected activity was the last one in front.
      */
-    fun phoneSpeechSource(): SpeechSource {
-        val hostContext = runCatching { ProjectedContext.createHostDeviceContext(appContext) }.getOrDefault(appContext)
-        return speechSource(hostContext)
-    }
+    fun hostContext(): Context =
+        runCatching { ProjectedContext.createHostDeviceContext(appContext) }.getOrDefault(appContext)
+
+    /** The phone's microphone. */
+    fun phoneSpeechSource(): SpeechSource = speechSource(hostContext())
 
     /** Whether Display AI Glasses are currently connected to this phone. */
     fun glassesConnected(): Flow<Boolean> =

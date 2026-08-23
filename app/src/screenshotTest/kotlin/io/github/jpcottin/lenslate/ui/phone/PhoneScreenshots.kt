@@ -7,6 +7,7 @@ import com.android.tools.screenshot.PreviewTest
 import io.github.jpcottin.lenslate.data.settings.Settings
 import io.github.jpcottin.lenslate.domain.LiveTranslationState
 import io.github.jpcottin.lenslate.ui.phone.home.HomeScreen
+import io.github.jpcottin.lenslate.ui.phone.read.ReadScreen
 import io.github.jpcottin.lenslate.ui.phone.settings.SettingsScreen
 import io.github.jpcottin.lenslate.ui.preview.PreviewData
 import io.github.jpcottin.lenslate.ui.theme.LenslateTheme
@@ -27,6 +28,7 @@ private fun homeScreen(live: LiveTranslationState, connected: Boolean, wide: Boo
             micPermissionDenied = false,
             launchError = null,
             onToggleListening = {},
+            onRead = {},
             onSetLanguages = { _, _ -> },
             onSwapLanguages = {},
             onClearTranscript = {},
@@ -79,5 +81,23 @@ fun SettingsGemini() {
             onDownloadModel = {},
             onDeleteModel = {},
         )
+    }
+}
+
+@PreviewTest
+@Preview(name = "Phone", device = Devices.PHONE, showBackground = true)
+@Composable
+fun ReadScreenIdle() {
+    LenslateTheme(dynamicColor = false) {
+        ReadScreen(surfaceRequest = null, isReading = false, error = null, onCapture = {}, onBack = {})
+    }
+}
+
+@PreviewTest
+@Preview(name = "Phone", device = Devices.PHONE, showBackground = true)
+@Composable
+fun ReadScreenNoText() {
+    LenslateTheme(dynamicColor = false) {
+        ReadScreen(surfaceRequest = null, isReading = false, error = "No text found. Try getting closer or improving the light.", onCapture = {}, onBack = {})
     }
 }

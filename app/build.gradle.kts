@@ -119,6 +119,14 @@ dependencies {
     implementation(libs.mlkit.translate)
     implementation(libs.okhttp)
 
+    // Read mode: camera snapshot (CameraX) + on-device OCR (ML Kit Text Recognition)
+    implementation(libs.androidx.camera.core)
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.compose)
+    implementation(libs.mlkit.text.recognition)
+    implementation(libs.mlkit.text.recognition.japanese)
+
     // AppFunctions: expose translateText to on-device agents
     implementation(libs.androidx.appfunctions)
     implementation(libs.androidx.appfunctions.service)

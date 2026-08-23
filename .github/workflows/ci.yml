@@ -293,7 +293,7 @@ jobs:
       - name: Run instrumented tests
         run: ./gradlew :app:connectedDebugAndroidTest
 
-      - name: Build, run and inject an utterance through the debug receiver
+      - name: Build, run, inject an utterance and read a sign through the debug receiver
         run: |
           SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
           export PATH="$SDK/platform-tools:$PATH"
@@ -301,15 +301,24 @@ jobs:
           android run --apks app/build/outputs/apk/debug/app-debug.apk
           adb shell pm grant io.github.jpcottin.lenslate android.permission.RECORD_AUDIO
           sleep 5
-          adb shell "am broadcast -a io.github.jpcottin.lenslate.debug.UTTERANCE -p io.github.jpcottin.lenslate --es text 'Bonjour tout le monde'"
+          adb shell "am broadcast -a io.github.jpcottin.lenslate.debug.UTTERANCE -p io.github.jpcottin.lenslate --es text 'Bonjour tout le monde' --es from fr --es to en"
           # The first translation downloads the FR→EN models; poll the layout for the result.
           for _ in $(seq 1 24); do
             android layout > layout.json || true
             grep -qi "hello everyone" layout.json && break
             sleep 5
           done
-          android screen capture -o lenslate-phone.png || true
           grep -qi "hello everyone" layout.json || { echo "ERROR: translation not found in layout"; cat layout.json; exit 1; }
+          # Read mode: OCR a French sign image through the debug receiver and expect its translation.
+          adb push docs/test-images/sign-fr.png /sdcard/Android/data/io.github.jpcottin.lenslate/files/sign-fr.png
+          adb shell "am broadcast -a io.github.jpcottin.lenslate.debug.READ_IMAGE -p io.github.jpcottin.lenslate --es path sign-fr.png --es from fr --es to en"
+          for _ in $(seq 1 24); do
+            android layout > layout.json || true
+            grep -qiE "emergency exit|exit" layout.json && break
+            sleep 5
+          done
+          android screen capture -o lenslate-phone.png || true
+          grep -qiE "emergency exit|exit" layout.json || { echo "ERROR: read-mode translation not found in layout"; cat layout.json; exit 1; }
 
       - name: Stop emulator
         if: always()

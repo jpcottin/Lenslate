@@ -3,6 +3,9 @@
 
     <!-- Listen mode: speech is captured from the glasses' (or phone's) microphone. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- Read mode: a snapshot from the glasses' (or phone's) camera is OCR'd on device. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera.any" android:required="false" />
     <!-- Only used to download ML Kit translation models and for the optional Gemini engine. -->
     <uses-permission android:name="android.permission.INTERNET" />
 

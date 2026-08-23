@@ -13,12 +13,22 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+/** Where an [Utterance] came from. */
+enum class UtteranceKind {
+    /** Heard through the microphone (Listen mode). */
+    SPOKEN,
+
+    /** Read from a camera snapshot (Read mode). */
+    READ,
+}
+
 /** One recognized sentence and its translation (null while the translation is in flight). */
 data class Utterance(
     val id: Long,
     val source: String,
     val translation: String? = null,
     val error: String? = null,
+    val kind: UtteranceKind = UtteranceKind.SPOKEN,
 )
 
 data class LiveTranslationState(
@@ -32,6 +42,8 @@ data class LiveTranslationState(
     val partialTranslation: String = "",
     val utterances: List<Utterance> = emptyList(),
     val error: String? = null,
+    /** A Read-mode snapshot is being captured or recognized. */
+    val isReading: Boolean = false,
 ) {
     val latest: Utterance? get() = utterances.lastOrNull()
 }
@@ -119,8 +131,36 @@ class LiveTranslator(
     }
 
     /** Feeds a sentence as if it had been recognized; handy for typed input and tests. */
-    fun submit(text: String) {
-        scope.launch { handle(SpeechEvent.Final(text)) }
+    fun submit(text: String, kind: UtteranceKind = UtteranceKind.SPOKEN) {
+        scope.launch { addUtterance(text, kind) }
+    }
+
+    /**
+     * Read mode: takes one snapshot from [capture], recognizes the text in the current source
+     * language with [recognizer], and translates it like a spoken sentence. Returns the recognized
+     * text, or null when nothing was read (the reason is in [LiveTranslationState.error]).
+     */
+    suspend fun readText(capture: FrameCapture, recognizer: TextRecognizer): String? {
+        if (state.value.isReading) return null
+        _state.update { it.copy(isReading = true, error = null) }
+        try {
+            val frame = capture.capture()
+            val text = recognizer.recognize(frame, state.value.from).trim()
+            if (text.isEmpty()) {
+                _state.update { it.copy(error = NO_TEXT_FOUND) }
+                return null
+            }
+            // OCR keeps line breaks; a sign reads better as one sentence per paragraph.
+            val normalized = text.lines().map { it.trim() }.filter { it.isNotEmpty() }.joinToString(" ")
+            addUtterance(normalized, UtteranceKind.READ)
+            return normalized
+        } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
+            _state.update { it.copy(error = e.message ?: "Could not read text") }
+            return null
+        } finally {
+            _state.update { it.copy(isReading = false) }
+        }
     }
 
     private fun handle(event: SpeechEvent) {
@@ -132,17 +172,21 @@ class LiveTranslator(
             }
             is SpeechEvent.Final -> {
                 partialJob?.cancel()
-                val text = event.text.trim()
                 _state.update { it.copy(partialSource = "", partialTranslation = "") }
-                if (text.isEmpty()) return
-                val id = nextId++
-                _state.update { s ->
-                    s.copy(utterances = (s.utterances + Utterance(id, text)).takeLast(maxUtterances))
-                }
-                translateUtterance(id, text)
+                addUtterance(event.text, UtteranceKind.SPOKEN)
             }
             is SpeechEvent.Error -> _state.update { it.copy(error = event.message) }
         }
+    }
+
+    private fun addUtterance(rawText: String, kind: UtteranceKind) {
+        val text = rawText.trim()
+        if (text.isEmpty()) return
+        val id = nextId++
+        _state.update { s ->
+            s.copy(utterances = (s.utterances + Utterance(id, text, kind = kind)).takeLast(maxUtterances))
+        }
+        translateUtterance(id, text)
     }
 
     private fun translateUtterance(id: Long, text: String) {
@@ -159,8 +203,14 @@ class LiveTranslator(
                     error = error ?: st.error,
                 )
             }
-            if (translation != null) _translated.tryEmit(Utterance(id, text, translation))
+            if (translation != null) {
+                _translated.tryEmit(state.value.utterances.firstOrNull { it.id == id } ?: Utterance(id, text, translation))
+            }
         }
+    }
+
+    companion object {
+        const val NO_TEXT_FOUND = "No text found"
     }
 
     private fun schedulePartialTranslation(text: String) {

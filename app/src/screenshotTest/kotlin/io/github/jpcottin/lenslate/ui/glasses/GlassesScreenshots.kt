@@ -7,6 +7,7 @@ import com.android.tools.screenshot.PreviewTest
 import io.github.jpcottin.lenslate.domain.Language
 import io.github.jpcottin.lenslate.domain.LiveTranslationState
 import io.github.jpcottin.lenslate.domain.Utterance
+import io.github.jpcottin.lenslate.domain.UtteranceKind
 
 /** The projected display of the Display AI Glasses emulator is 450×394 dp at 160 dpi. */
 @Preview(name = "Glasses", device = "spec:width=450dp,height=394dp,dpi=160", showBackground = true, backgroundColor = 0xFF000000)
@@ -20,6 +21,7 @@ private fun glasses(live: LiveTranslationState, showSource: Boolean = true, perm
             isVisualUiSupported = true,
             permissionDenied = permissionDenied,
             onToggleListening = {},
+            onRead = {},
             onRetryPermission = {},
             onExit = {},
         )
@@ -68,3 +70,39 @@ fun GlassesPaused() = glasses(
 @GlassesPreview
 @Composable
 fun GlassesPermissionDenied() = glasses(LiveTranslationState(), permissionDenied = true)()
+
+@PreviewTest
+@GlassesPreview
+@Composable
+fun GlassesReadResult() = glasses(
+    LiveTranslationState(
+        isListening = true,
+        from = Language.FRENCH,
+        to = Language.ENGLISH,
+        utterances = listOf(Utterance(1, "SORTIE DE SECOURS Ne pas obstruer", "EMERGENCY EXIT Do not obstruct", kind = UtteranceKind.READ)),
+    )
+)()
+
+@PreviewTest
+@GlassesPreview
+@Composable
+fun GlassesReading() = glasses(LiveTranslationState(isListening = true, isReading = true))()
+
+@PreviewTest
+@GlassesPreview
+@Composable
+fun GlassesCameraPermissionDenied() {
+    GlimmerTheme {
+        GlassesScreen(
+            live = LiveTranslationState(),
+            showSource = true,
+            isVisualUiSupported = true,
+            permissionDenied = false,
+            cameraPermissionDenied = true,
+            onToggleListening = {},
+            onRead = {},
+            onRetryPermission = {},
+            onExit = {},
+        )
+    }
+}

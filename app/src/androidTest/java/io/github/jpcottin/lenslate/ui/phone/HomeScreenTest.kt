@@ -5,6 +5,10 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -12,6 +16,7 @@ import io.github.jpcottin.lenslate.data.settings.Settings
 import io.github.jpcottin.lenslate.domain.Language
 import io.github.jpcottin.lenslate.domain.LiveTranslationState
 import io.github.jpcottin.lenslate.domain.Utterance
+import io.github.jpcottin.lenslate.domain.UtteranceKind
 import io.github.jpcottin.lenslate.ui.phone.home.HomeScreen
 import io.github.jpcottin.lenslate.ui.theme.LenslateTheme
 import org.junit.Assert.assertEquals
@@ -29,6 +34,7 @@ class HomeScreenTest {
         onToggle: () -> Unit = {},
         onSwap: () -> Unit = {},
         onLaunch: () -> Unit = {},
+        onRead: () -> Unit = {},
     ) = composeTestRule.setContent {
         LenslateTheme {
             HomeScreen(
@@ -38,6 +44,7 @@ class HomeScreenTest {
                 micPermissionDenied = false,
                 launchError = null,
                 onToggleListening = onToggle,
+                onRead = onRead,
                 onSetLanguages = { _, _ -> },
                 onSwapLanguages = onSwap,
                 onClearTranscript = {},
@@ -121,5 +128,19 @@ class HomeScreenTest {
         composeTestRule.onNodeWithText("…").assertIsDisplayed()
         composeTestRule.onNodeWithText("boom").assertIsDisplayed()
         composeTestRule.onNodeWithContentDescription("Clear transcript").assertIsEnabled()
+    }
+
+    @Test
+    fun readButton_invokesCallback_andReadUtteranceShowsCameraIcon() {
+        var reads = 0
+        setContent(
+            LiveTranslationState(utterances = listOf(Utterance(1, "SORTIE", "EXIT", kind = UtteranceKind.READ))),
+            onRead = { reads++ },
+        )
+        // Both the FAB and the transcript's camera icon are described as "Read"; click the button.
+        composeTestRule.onNode(hasContentDescription("Read") and hasClickAction()).performClick()
+        assertEquals(1, reads)
+        composeTestRule.onNodeWithText("EXIT").assertIsDisplayed()
+        composeTestRule.onAllNodesWithContentDescription("Read").assertCountEquals(2)
     }
 }
