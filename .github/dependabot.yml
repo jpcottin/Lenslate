@@ -9,3 +9,10 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    ignore:
+      # alpha16 removed the screenshotTests { imageDifferenceThreshold } DSL that keeps
+      # macOS-recorded references passing on Linux CI; revisit when the replacement is clear.
+      - dependency-name: com.android.compose.screenshot
+        versions: ["0.0.1-alpha16"]
+      - dependency-name: com.android.tools.screenshot:screenshot-validation-api
+        versions: ["0.0.1-alpha16"]
