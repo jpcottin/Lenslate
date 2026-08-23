@@ -22,6 +22,7 @@ import androidx.xr.glimmer.GlimmerTheme
 import androidx.xr.glimmer.googlefonts.createGoogleSansFlexTypography
 import androidx.xr.projected.ProjectedActivityCompat
 import androidx.xr.projected.ProjectedContext
+import androidx.xr.projected.ProjectedInputEvent
 import androidx.xr.projected.ProjectedDeviceController
 import androidx.xr.projected.ProjectedDisplayController
 import androidx.xr.projected.experimental.ExperimentalProjectedApi
@@ -62,6 +63,8 @@ class GlassesActivity : ComponentActivity() {
     /** Pending glasses-side permission requests, completed from [onRequestPermissionsResult]. */
     private val pendingRequests = mutableMapOf<Int, CompletableDeferred<Boolean>>()
 
+    private var activityCompat: ProjectedActivityCompat? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         // Temporary requirement: let the system focus the first focusable element.
         ComposeUiFlags.isInitialFocusOnFocusableAvailable = true
@@ -71,6 +74,7 @@ class GlassesActivity : ComponentActivity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         initializeGlassesFeatures()
+        listenForHardwareButtons()
 
         val container = appContainer
         // Displayless glasses, or a lens that is off: read translations aloud. When the user
@@ -125,6 +129,8 @@ class GlassesActivity : ComponentActivity() {
     override fun onDestroy() {
         displayController?.close()
         displayController = null
+        activityCompat?.close()
+        activityCompat = null
         super.onDestroy()
     }
 
@@ -216,6 +222,27 @@ class GlassesActivity : ComponentActivity() {
 
     private fun hasPermission(context: Context, permission: String): Boolean =
         ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+
+    /** The glasses' hardware camera button triggers Read mode. */
+    private fun listenForHardwareButtons() {
+        lifecycleScope.launch {
+            val compat = runCatching {
+                withTimeout(SERVICE_TIMEOUT_MS) { ProjectedActivityCompat.create(this@GlassesActivity) }
+            }.getOrElse { e ->
+                Log.w(TAG, "Projected input events unavailable", e)
+                return@launch
+            }
+            activityCompat = compat
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                compat.projectedInputEvents.collect { event ->
+                    if (event.inputAction == ProjectedInputEvent.ProjectedInputAction.TOGGLE_APP_CAMERA) {
+                        Log.i(TAG, "Camera button pressed")
+                        readText()
+                    }
+                }
+            }
+        }
+    }
 
     // ---- Glasses device ----------------------------------------------------------------------
 
