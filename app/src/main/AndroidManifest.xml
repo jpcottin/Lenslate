@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Listen mode: speech is captured from the glasses' (or phone's) microphone. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- Only used to download ML Kit translation models and for the optional Gemini engine. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Package visibility for speech recognition services (API 30+). -->
+    <queries>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+    </queries>
+
+    <application
+        android:name=".LenslateApplication"
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:windowSoftInputMode="adjustResize"
+        android:theme="@style/Theme.Lenslate">
+
+        <!-- AppFunctions metadata so on-device agents can discover translateText. -->
+        <property
+            android:name="android.app.appfunctions.app_metadata"
+            android:resource="@xml/app_metadata" />
+
+        <!-- Phone UI: language pair, settings, transcript, and the "Launch on glasses" entry point. -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Projected activity rendered on Display AI Glasses with Jetpack Compose Glimmer.
+             xr_projected tells the system to run it with a projected context so that the
+             SpeechRecognizer (and later the camera) use the glasses' hardware. -->
+        <activity
+            android:name=".ui.glasses.GlassesActivity"
+            android:exported="true"
+            android:requiredDisplayCategory="xr_projected"
+            android:theme="@style/Theme.Lenslate.Glasses">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AppFunctionAppMetadata xmlns:appfn="http://schemas.android.com/apk/androidx.appfunctions"
+    appfn:description="Lenslate translates text between English (en), French (fr), Spanish (es), German (de) and Japanese (ja).
+Operational Patterns:
+- Call 'translateText' directly; no setup or authentication call is required.
+- Pass an empty string for 'fromLanguage' / 'toLanguage' to use the language pair the user selected in the app.
+Constraints:
+- Language codes must be one of: en, fr, es, de, ja.
+- The on-device engine may need to download a model on first use, which requires a network connection."
+    appfn:displayDescription="@string/app_functions_description" />

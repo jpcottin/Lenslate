@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Lenslate" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <!-- Glasses have an additive display: black renders as fully transparent, so the
+         window background must be pure black to avoid blocking the user's view. -->
+    <style name="Theme.Lenslate.Glasses" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@android:color/black</item>
+        <item name="android:colorBackground">@android:color/black</item>
+    </style>
+</resources>

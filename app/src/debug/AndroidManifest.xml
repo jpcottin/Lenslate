@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <application>
+        <!-- Debug builds only: inject utterances from adb (see DebugUtteranceReceiver). -->
+        <receiver
+            android:name=".debug.DebugUtteranceReceiver"
+            android:exported="true"
+            tools:ignore="ExportedReceiver">
+            <intent-filter>
+                <action android:name="io.github.jpcottin.lenslate.debug.UTTERANCE" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

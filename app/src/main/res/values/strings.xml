@@ -1,0 +1,59 @@
+<resources>
+    <string name="app_name">Lenslate</string>
+    <string name="app_functions_description">Translate text between English, French, Spanish, German and Japanese, on-device or with Gemini.</string>
+
+    <!-- Phone: home -->
+    <string name="home_title">Lenslate</string>
+    <string name="settings">Settings</string>
+    <string name="glasses_connected">AI Glasses connected</string>
+    <string name="glasses_disconnected">No AI Glasses connected</string>
+    <string name="launch_on_glasses">Launch on glasses</string>
+    <string name="launch_on_glasses_hint">Pair your Display AI Glasses to translate on the lens.</string>
+    <string name="from_language">From</string>
+    <string name="to_language">To</string>
+    <string name="swap_languages">Swap languages</string>
+    <string name="listen">Listen</string>
+    <string name="stop_listening">Stop</string>
+    <string name="listening">Listening…</string>
+    <string name="transcript_empty">Tap Listen and start talking. Translations appear here and on your glasses.</string>
+    <string name="clear_transcript">Clear transcript</string>
+    <string name="mic_permission_denied">Microphone permission denied. Enable it in system settings to use Listen mode.</string>
+    <string name="models_downloading">Downloading %1$s models…</string>
+    <string name="engine_on_device">On-device</string>
+    <string name="engine_gemini">Gemini</string>
+
+    <!-- Phone: settings -->
+    <string name="settings_engine_title">Translation engine</string>
+    <string name="settings_engine_on_device">On-device (ML Kit)</string>
+    <string name="settings_engine_on_device_summary">Private and offline. Models are about 30 MB per language.</string>
+    <string name="settings_engine_gemini">Gemini (cloud)</string>
+    <string name="settings_engine_gemini_summary">Better quality and fluency. Sends the text to Google using your own API key.</string>
+    <string name="settings_gemini_api_key">Gemini API key</string>
+    <string name="settings_gemini_api_key_hint">Create a key at aistudio.google.com</string>
+    <string name="settings_gemini_model">Gemini model</string>
+    <string name="settings_gemini_missing_key">Add a Gemini API key to use the Gemini engine.</string>
+    <string name="settings_speech_title">Speech</string>
+    <string name="settings_speak_translations">Speak translations aloud</string>
+    <string name="settings_speak_translations_summary">Read each translation with text-to-speech in the glasses\' speakers.</string>
+    <string name="settings_show_source_on_glasses">Show original text on glasses</string>
+    <string name="settings_show_source_on_glasses_summary">Display the recognized sentence under its translation.</string>
+    <string name="settings_models_title">Offline translation models</string>
+    <string name="settings_models_summary">Download the languages you want to translate offline. Each model is about 30 MB.</string>
+    <string name="model_downloaded">Downloaded</string>
+    <string name="model_not_downloaded">Not downloaded</string>
+    <string name="model_downloading">Downloading…</string>
+    <string name="model_download">Download</string>
+    <string name="model_delete">Delete</string>
+    <string name="back">Back</string>
+
+    <!-- Glasses -->
+    <string name="glasses_listening">Listening</string>
+    <string name="glasses_paused">Paused</string>
+    <string name="glasses_tap_to_listen">Tap to listen</string>
+    <string name="glasses_permission_needed">Microphone access is needed to translate speech.</string>
+    <string name="glasses_retry">Retry</string>
+    <string name="glasses_exit">Exit</string>
+    <string name="glasses_audio_only">Audio guidance mode: translations are spoken aloud.</string>
+    <string name="glasses_welcome">Lenslate is listening</string>
+    <string name="glasses_error_prefix">Error: %1$s</string>
+</resources>
