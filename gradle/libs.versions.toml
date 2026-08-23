@@ -25,7 +25,7 @@ glimmer = "1.0.0-alpha17"
 xrProjected = "1.0.0-alpha11"
 xrRuntime = "1.0.0-beta02"
 appfunctions = "1.0.0-alpha09"
-screenshot = "0.0.1-alpha15"
+screenshot = "0.0.1-alpha16"
 turbine = "1.2.1"
 
 [libraries]
