@@ -1,32 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Glasses with two "caption" bars underneath: translations shown on the lens.
-     All shapes stay inside the 66dp adaptive-icon safe zone (21..87 in the 108 viewport). -->
+<!-- Single-colour layer for Android 13+ themed icons: same glyph as the foreground. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-
-    <!-- lenses -->
     <path
         android:pathData="M29,41 H48 A4,4 0 0 1 52,45 V55 A4,4 0 0 1 48,59 H29 A4,4 0 0 1 25,55 V45 A4,4 0 0 1 29,41 Z
                           M60,41 H79 A4,4 0 0 1 83,45 V55 A4,4 0 0 1 79,59 H60 A4,4 0 0 1 56,55 V45 A4,4 0 0 1 60,41 Z"
-        android:strokeColor="#FFFFFFFF"
+        android:strokeColor="#FF000000"
         android:strokeWidth="4"
-        android:strokeLineJoin="round"
-        android:fillColor="#33FFFFFF" />
-
-    <!-- bridge and temples -->
+        android:strokeLineJoin="round" />
     <path
         android:pathData="M52,48 Q54,45 56,48 M25,46 L21,44 M83,46 L87,44"
-        android:strokeColor="#FFFFFFFF"
+        android:strokeColor="#FF000000"
         android:strokeWidth="4"
         android:strokeLineCap="round" />
-
-    <!-- caption bars -->
     <path
         android:pathData="M33,69 H75 M41,77 H67"
-        android:strokeColor="#FFFFC046"
+        android:strokeColor="#FF000000"
         android:strokeWidth="5"
         android:strokeLineCap="round" />
 </vector>
