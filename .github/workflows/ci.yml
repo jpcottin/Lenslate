@@ -331,6 +331,21 @@ jobs:
           android screen capture -o lenslate-phone.png || true
           grep -qi "emergency exit" layout.json || { echo "ERROR: read-mode translation not found in layout"; cat layout.json; exit 1; }
 
+      # Building the minified APK is not enough: an R8 rule regression (stripped ML Kit
+      # registrar constructors) once produced a release that crashed on launch while every
+      # build job stayed green. Launch it and make sure the process survives.
+      - name: Smoke-launch the minified release APK
+        run: |
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          export PATH="$SDK/platform-tools:$PATH"
+          ./gradlew :app:assembleRelease
+          adb install -r app/build/outputs/apk/release/app-release.apk
+          adb logcat -c
+          adb shell am start -W -n com.jpcottin.lenslate/.MainActivity
+          sleep 8
+          adb shell pidof com.jpcottin.lenslate || { echo "ERROR: release app died on launch"; adb logcat -d | grep -A30 "FATAL EXCEPTION" | head -60; exit 1; }
+          adb logcat -d | grep -q "FATAL EXCEPTION" && { echo "ERROR: crash in logcat"; adb logcat -d | grep -A30 "FATAL EXCEPTION" | head -60; exit 1; } || true
+
       - name: Stop emulator
         if: always()
         run: android emulator stop "$DEVICE" || true
