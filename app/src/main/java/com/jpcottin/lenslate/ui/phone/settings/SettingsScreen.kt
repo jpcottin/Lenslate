@@ -64,6 +64,7 @@ fun SettingsScreen(
     onDownloadModel: (Language) -> Unit,
     onDeleteModel: (Language) -> Unit,
     modifier: Modifier = Modifier,
+    showBack: Boolean = true,
 ) {
     Scaffold(
         modifier = modifier,
@@ -71,8 +72,10 @@ fun SettingsScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.settings)) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.back))
+                    if (showBack) {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.back))
+                        }
                     }
                 },
             )

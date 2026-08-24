@@ -2,6 +2,7 @@ package com.jpcottin.lenslate.ui.phone.home
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -95,11 +96,14 @@ fun HomeScreen(
     onLaunchOnGlasses: () -> Unit,
     modifier: Modifier = Modifier,
     cameraPermissionDenied: Boolean = false,
-    isWideWindow: Boolean = currentWindowAdaptiveInfo().windowSizeClass
-        .isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND),
+    /** Overrides the layout choice (used by tests/previews); null measures the pane itself. */
+    isWideWindow: Boolean? = null,
 ) {
+    BoxWithConstraints(modifier) {
+    // The screen can share the window with the Settings supporting pane, so decide the layout
+    // from this pane's own width, not from the window size class.
+    val isWide = isWideWindow ?: (maxWidth >= WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND.dp)
     Scaffold(
-        modifier = modifier,
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.home_title)) },
@@ -144,7 +148,7 @@ fun HomeScreen(
                 StatusBanner(live, settings, micPermissionDenied, cameraPermissionDenied)
             }
         }
-        if (isWideWindow) {
+        if (isWide) {
             Row(
                 Modifier
                     .fillMaxSize()
@@ -167,6 +171,7 @@ fun HomeScreen(
                 Transcript(live, Modifier.weight(1f), bottomPadding = 88.dp)
             }
         }
+    }
     }
 }
 

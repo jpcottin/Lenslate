@@ -15,6 +15,7 @@ import com.jpcottin.lenslate.ui.theme.LenslateTheme
 @Preview(name = "Phone", device = Devices.PHONE, showBackground = true)
 @Preview(name = "Foldable", device = Devices.FOLDABLE, showBackground = true)
 @Preview(name = "Tablet", device = Devices.TABLET, showBackground = true)
+@Preview(name = "Desktop", device = Devices.DESKTOP, showBackground = true)
 annotation class FormFactorPreviews
 
 private val transcript = PreviewData.transcript
@@ -90,6 +91,15 @@ fun SettingsGemini() {
 fun ReadScreenIdle() {
     LenslateTheme(dynamicColor = false) {
         ReadScreen(surfaceRequest = null, isReading = false, error = null, onCapture = {}, onBack = {})
+    }
+}
+
+@PreviewTest
+@Preview(name = "Tablet", device = Devices.TABLET, showBackground = true)
+@Composable
+fun ReadScreenTablet() {
+    LenslateTheme(dynamicColor = false) {
+        ReadScreen(surfaceRequest = null, isReading = true, error = null, onCapture = {}, onBack = {})
     }
 }
 

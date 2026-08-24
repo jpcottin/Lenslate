@@ -1,6 +1,8 @@
 package com.jpcottin.lenslate.ui.phone.settings
 
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.Composable
+import androidx.window.core.layout.WindowSizeClass
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -17,6 +19,9 @@ fun SettingsRoute(
     SettingsScreen(
         settings = settings,
         models = models,
+        // Side by side with Home there is nothing to go "back" from.
+        showBack = !currentWindowAdaptiveInfo().windowSizeClass
+            .isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND),
         onBack = onBack,
         onEngineChange = viewModel::setEngine,
         onGeminiApiKeyChange = viewModel::setGeminiApiKey,
