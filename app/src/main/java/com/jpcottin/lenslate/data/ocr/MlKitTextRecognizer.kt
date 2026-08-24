@@ -21,6 +21,8 @@ class MlKitTextRecognizer : TextRecognizer {
         val image = InputImage.fromBitmap(frame.bitmap, frame.rotationDegrees)
         return try {
             client.process(image).await().text
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             throw TextRecognitionException(e.message ?: "Text recognition failed", e)
         }

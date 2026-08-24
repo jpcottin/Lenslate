@@ -134,4 +134,15 @@ class GlassesScreenTest {
         ).assertIsDisplayed()
         composeTestRule.onNodeWithText("Retry").assertDoesNotExist()
     }
+
+    @Test
+    fun tappingTheCard_withTranslationShown_togglesListening() {
+        var toggles = 0
+        setContent(
+            LiveTranslationState(isListening = true, utterances = listOf(Utterance(1, "Bonjour", "Hello"))),
+            onToggle = { toggles++ },
+        )
+        composeTestRule.onNodeWithText("Hello").performClick()
+        assertEquals(1, toggles)
+    }
 }

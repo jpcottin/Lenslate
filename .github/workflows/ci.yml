@@ -24,8 +24,15 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v6
 
-      - name: Run unit tests
-        run: ./gradlew :app:testDebugUnitTest
+      - name: Run unit tests and lint
+        run: ./gradlew :app:testDebugUnitTest :app:lintDebug
+
+      - name: Upload lint report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: lint-report
+          path: app/build/reports/lint-results-debug.html
 
       - name: Upload test results
         if: always()
@@ -284,15 +291,19 @@ jobs:
           android emulator start --cold "$DEVICE"
           for _ in $(seq 1 30); do adb get-state >/dev/null 2>&1 && break; sleep 2; done
           adb get-state >/dev/null 2>&1 || { cat "$HOME/.android/$DEVICE/emulator.log" 2>/dev/null; exit 1; }
+          # settings/broadcasts need a fully booted system, not just an adb connection.
+          for _ in $(seq 1 60); do
+            [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ] && break
+            sleep 5
+          done
+          [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ] || { echo "boot timeout"; cat "$HOME/.android/$DEVICE/emulator.log" 2>/dev/null; exit 1; }
           adb devices
           adb shell settings put global window_animation_scale 0
           adb shell settings put global transition_animation_scale 0
           adb shell settings put global animator_duration_scale 0
           adb logcat -v time > "${{ github.workspace }}/emulator_logcat.txt" &
 
-      - name: Run instrumented tests
-        run: ./gradlew :app:connectedDebugAndroidTest
-
+      # Instrumented tests already run in the matrix job; this leg only exercises the CLI journey.
       - name: Build, run, inject an utterance and read a sign through the debug receiver
         run: |
           SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
@@ -314,11 +325,11 @@ jobs:
           adb shell "am broadcast -a com.jpcottin.lenslate.debug.READ_IMAGE -p com.jpcottin.lenslate --es path sign-fr.png --es from fr --es to en"
           for _ in $(seq 1 24); do
             android layout > layout.json || true
-            grep -qiE "emergency exit|exit" layout.json && break
+            grep -qi "emergency exit" layout.json && break
             sleep 5
           done
           android screen capture -o lenslate-phone.png || true
-          grep -qiE "emergency exit|exit" layout.json || { echo "ERROR: read-mode translation not found in layout"; cat layout.json; exit 1; }
+          grep -qi "emergency exit" layout.json || { echo "ERROR: read-mode translation not found in layout"; cat layout.json; exit 1; }
 
       - name: Stop emulator
         if: always()

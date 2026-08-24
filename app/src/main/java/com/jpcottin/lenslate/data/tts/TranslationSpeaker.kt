@@ -17,6 +17,9 @@ class TranslationSpeaker(private val appContext: Context) {
     private var ready = false
     private val pending = ArrayDeque<Pair<String, Language>>()
 
+    /** Identity of the engine currently being initialized; stale init callbacks are ignored. */
+    private var initToken: Any? = null
+
     fun attach(context: Context) = recreate(context)
 
     fun detach() = recreate(appContext)
@@ -28,7 +31,10 @@ class TranslationSpeaker(private val appContext: Context) {
             pending.addLast(text to language)
             return
         }
-        engine.language = language.locale
+        val result = engine.setLanguage(language.locale)
+        if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+            Log.w(TAG, "TTS voice for ${language.tag} unavailable ($result); speaking with the default voice")
+        }
         engine.speak(text, TextToSpeech.QUEUE_ADD, null, "lenslate-${System.nanoTime()}")
     }
 
@@ -47,7 +53,11 @@ class TranslationSpeaker(private val appContext: Context) {
     private fun recreate(context: Context) {
         tts?.shutdown()
         ready = false
+        val token = Any()
+        initToken = token
         tts = TextToSpeech(context) { status ->
+            // A callback from an engine that was already replaced must not touch state.
+            if (initToken !== token) return@TextToSpeech
             ready = status == TextToSpeech.SUCCESS
             if (!ready) {
                 Log.w(TAG, "TextToSpeech init failed: $status")

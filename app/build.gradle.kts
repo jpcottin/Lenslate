@@ -35,6 +35,9 @@ android {
 
     buildTypes {
         release {
+            // GitHub-release builds are signed with the debug keystore so the published APK is
+            // installable; replace with a real signingConfig before any store distribution.
+            signingConfig = signingConfigs.getByName("debug")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(

@@ -53,7 +53,8 @@ class TranslateFunctions {
         toLanguage: String,
     ): TranslationResult {
         val container = appFunctionContext.context.appContainer
-        val settings = container.settings.value
+        // Read from disk: on a cold start the in-memory snapshot may still hold defaults.
+        val settings = container.freshSettings()
         return TranslateTextHandler(settings, container.engineFor(settings.engine)).handle(text, fromLanguage, toLanguage)
     }
 }

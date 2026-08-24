@@ -33,4 +33,15 @@ class InjectableSpeechSourceTest {
             cancelAndIgnoreRemainingEvents()
         }
     }
+
+    @Test
+    fun mergedFlow_completesWhenTheRealSourceCompletes() = runTest {
+        val real = FakeSpeechSource()
+        InjectableSpeechSource(real).listen(Language.FRENCH).test {
+            real.emit(SpeechEvent.Ready)
+            assertEquals(SpeechEvent.Ready, awaitItem())
+            real.complete()
+            awaitComplete()
+        }
+    }
 }

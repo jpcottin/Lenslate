@@ -5,7 +5,13 @@ import com.jpcottin.lenslate.domain.Language
 import com.jpcottin.lenslate.domain.TranslationEngine
 import com.jpcottin.lenslate.domain.TranslationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import okhttp3.Call
+import okhttp3.Callback
+import okhttp3.Response
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
@@ -35,6 +41,9 @@ class GeminiTranslationEngine(
         val key = apiKey().trim()
         if (key.isEmpty()) throw TranslationException("Add a Gemini API key in Settings to use the Gemini engine")
         val modelName = model().trim().ifEmpty { BuildConfig.GEMINI_DEFAULT_MODEL }
+        if (!modelName.matches(MODEL_NAME_REGEX)) {
+            throw TranslationException("Invalid Gemini model name: \"$modelName\"")
+        }
 
         val body = GenerateContentRequest(
             contents = listOf(Content(parts = listOf(Part(prompt(text, from, to))))),
@@ -48,7 +57,7 @@ class GeminiTranslationEngine(
 
         return withContext(Dispatchers.IO) {
             try {
-                client.newCall(request).execute().use { response ->
+                executeCancellable(request).use { response ->
                     val raw = response.body.string()
                     if (!response.isSuccessful) {
                         throw TranslationException("Gemini error ${response.code}: ${errorMessage(raw)}")
@@ -60,6 +69,22 @@ class GeminiTranslationEngine(
             }
         }
     }
+
+    /** Runs the call without pinning an IO thread; cancelling the coroutine cancels the request. */
+    private suspend fun executeCancellable(request: Request): Response =
+        suspendCancellableCoroutine { cont ->
+            val call = client.newCall(request)
+            cont.invokeOnCancellation { call.cancel() }
+            call.enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    if (cont.isActive) cont.resumeWithException(e)
+                }
+
+                override fun onResponse(call: Call, response: Response) {
+                    if (cont.isActive) cont.resume(response) else response.close()
+                }
+            })
+        }
 
     private fun parseTranslation(raw: String): String {
         val parsed = runCatching { json.decodeFromString<GenerateContentResponse>(raw) }
@@ -79,6 +104,7 @@ class GeminiTranslationEngine(
 
     companion object {
         private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
+        private val MODEL_NAME_REGEX = Regex("[A-Za-z0-9._-]+")
 
         fun prompt(text: String, from: Language, to: Language): String =
             "Translate the following ${from.englishName} text into ${to.englishName}. " +

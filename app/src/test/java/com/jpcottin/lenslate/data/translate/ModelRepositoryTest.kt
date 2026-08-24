@@ -10,13 +10,15 @@ private class FakeModelStore(
     val downloaded: MutableSet<String> = mutableSetOf(),
     var failDownloadWith: Throwable? = null,
     var failListing: Boolean = false,
+    /** When set, the listing reports this instead of [downloaded] — a stale disk snapshot. */
+    var listingOverride: Set<String>? = null,
 ) : TranslateModelStore {
     val downloadCalls = mutableListOf<String>()
     val deleteCalls = mutableListOf<String>()
 
     override suspend fun downloadedLanguageCodes(): Set<String> {
         if (failListing) throw IllegalStateException("no play services")
-        return downloaded.toSet()
+        return listingOverride ?: downloaded.toSet()
     }
 
     override suspend fun download(code: String) {
@@ -83,5 +85,19 @@ class ModelRepositoryTest {
         repo.delete(Language.FRENCH)
         assertEquals(listOf("fr"), store.deleteCalls)
         assertEquals(ModelStatus.NotDownloaded, repo.statuses.value[Language.FRENCH])
+    }
+
+    @Test
+    fun refresh_doesNotDowngradeAJustDownloadedModel() = runTest {
+        val store = FakeModelStore()
+        val repo = ModelRepository(store)
+        repo.download(Language.FRENCH)
+        assertEquals(ModelStatus.Downloaded, repo.statuses.value[Language.FRENCH])
+
+        // A refresh that started before the download finished sees a stale snapshot.
+        store.listingOverride = emptySet()
+        repo.refresh()
+
+        assertEquals(ModelStatus.Downloaded, repo.statuses.value[Language.FRENCH])
     }
 }

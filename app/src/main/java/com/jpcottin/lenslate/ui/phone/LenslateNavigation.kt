@@ -6,9 +6,11 @@ import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
 import androidx.compose.material3.adaptive.navigation3.SupportingPaneSceneStrategy
 import androidx.compose.material3.adaptive.navigation3.rememberSupportingPaneSceneStrategy
 import androidx.compose.runtime.Composable
+import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
+import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import com.jpcottin.lenslate.ui.phone.home.HomeRoute
 import com.jpcottin.lenslate.ui.phone.read.ReadRoute
@@ -33,6 +35,13 @@ data object ReadKey : NavKey
 @Composable
 fun LenslateNavigation() {
     val backStack = rememberNavBackStack(HomeKey)
+
+    // Pops must be idempotent: a double-tapped back arrow during the exit animation, or an
+    // async pop (Read finishing) racing a manual one, must never empty the back stack —
+    // NavDisplay throws on an empty stack.
+    fun popIfTop(key: NavKey) {
+        if (backStack.size > 1 && backStack.lastOrNull() == key) backStack.removeLastOrNull()
+    }
     // Never stack panes vertically: on a tall compact window (folded cover display) Settings
     // must take the whole screen, not share it with Home.
     val paneDirective = calculatePaneScaffoldDirective(currentWindowAdaptiveInfo())
@@ -40,7 +49,14 @@ fun LenslateNavigation() {
     val supportingPaneStrategy = rememberSupportingPaneSceneStrategy<NavKey>(directive = paneDirective)
     NavDisplay(
         backStack = backStack,
-        onBack = { backStack.removeLastOrNull() },
+        onBack = { if (backStack.size > 1) backStack.removeLastOrNull() },
+        // Specify decorators explicitly to include the ViewModelStore one: without it every
+        // route viewModel{} lands in the Activity store and is never cleared on pop.
+        // (NavDisplay adds its internal scene-setup decorator on its own.)
+        entryDecorators = listOf(
+            rememberSaveableStateHolderNavEntryDecorator(),
+            rememberViewModelStoreNavEntryDecorator(),
+        ),
         sceneStrategies = listOf(supportingPaneStrategy),
         entryProvider = entryProvider {
             entry<HomeKey>(metadata = SupportingPaneSceneStrategy.mainPane()) {
@@ -50,10 +66,10 @@ fun LenslateNavigation() {
                 )
             }
             entry<SettingsKey>(metadata = SupportingPaneSceneStrategy.supportingPane()) {
-                SettingsRoute(onBack = { backStack.removeLastOrNull() })
+                SettingsRoute(onBack = { popIfTop(SettingsKey) })
             }
             entry<ReadKey> {
-                ReadRoute(onBack = { backStack.removeLastOrNull() })
+                ReadRoute(onBack = { popIfTop(ReadKey) })
             }
         },
     )

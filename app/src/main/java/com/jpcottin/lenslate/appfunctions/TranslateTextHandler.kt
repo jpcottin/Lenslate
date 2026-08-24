@@ -19,8 +19,14 @@ internal class TranslateTextHandler(
         val to = resolve(toLanguage, settings.to, "toLanguage")
         val translated = try {
             engine.translate(text, from, to)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: TranslationException) {
             throw AppFunctionAppUnknownException(e.message ?: "Translation failed")
+        } catch (e: Exception) {
+            // Anything else (Play Services failures, URL problems, ...) must still leave the
+            // AppFunction boundary as the structured error the contract promises.
+            throw AppFunctionAppUnknownException(e.message ?: "Translation failed unexpectedly")
         }
         return TranslationResult(
             sourceText = text,

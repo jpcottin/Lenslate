@@ -3,6 +3,8 @@ package com.jpcottin.lenslate.di
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.preferencesDataStore
 import com.jpcottin.lenslate.data.settings.Settings
 import com.jpcottin.lenslate.data.settings.SettingsRepository
@@ -30,7 +32,11 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-private val Context.settingsDataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
+private val Context.settingsDataStore: DataStore<Preferences> by preferencesDataStore(
+    name = "settings",
+    // A corrupted file is replaced with defaults instead of crash-looping the app at startup.
+    corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() },
+)
 
 @OptIn(ExperimentalProjectedApi::class)
 /** Manual dependency container, owned by [com.jpcottin.lenslate.LenslateApplication]. */
@@ -47,9 +53,17 @@ class AppContainer(private val appContext: Context) {
 
     val onDeviceEngine = MlKitTranslationEngine()
 
+    /**
+     * Latest settings actually read from disk. The eagerly-started [settings] StateFlow can
+     * still hold its construction-time defaults when a cold-started AppFunction runs;
+     * [freshSettings] closes that race for suspending callers.
+     */
+    @Volatile
+    private var settingsSnapshot: Settings? = null
+
     val geminiEngine = GeminiTranslationEngine(
-        apiKey = { settings.value.geminiApiKey },
-        model = { settings.value.geminiModel },
+        apiKey = { (settingsSnapshot ?: settings.value).geminiApiKey },
+        model = { (settingsSnapshot ?: settings.value).geminiModel },
     )
 
     fun engineFor(kind: EngineKind): TranslationEngine = when (kind) {
@@ -57,8 +71,9 @@ class AppContainer(private val appContext: Context) {
         EngineKind.GEMINI -> geminiEngine
     }
 
-    /** The engine currently selected in settings, read from disk (for AppFunctions). */
-    suspend fun currentEngine(): TranslationEngine = engineFor(settingsRepository.settings.first().engine)
+    /** Settings read from disk right now — for entry points that may precede the eager collector. */
+    suspend fun freshSettings(): Settings =
+        settingsRepository.settings.first().also { settingsSnapshot = it }
 
     /** One shared pipeline: the phone UI and the glasses UI observe the same transcript. */
     val liveTranslator = LiveTranslator(
@@ -81,7 +96,10 @@ class AppContainer(private val appContext: Context) {
             }
         }
         appScope.launch {
-            settingsRepository.settings.collect { s -> liveTranslator.setLanguages(s.from, s.to) }
+            settingsRepository.settings.collect { s ->
+                settingsSnapshot = s
+                liveTranslator.setLanguages(s.from, s.to)
+            }
         }
     }
 

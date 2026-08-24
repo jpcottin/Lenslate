@@ -8,8 +8,11 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import com.jpcottin.lenslate.BuildConfig
 import com.jpcottin.lenslate.domain.EngineKind
 import com.jpcottin.lenslate.domain.Language
+import androidx.datastore.preferences.core.emptyPreferences
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
+import java.io.IOException
 
 data class Settings(
     val from: Language = Language.DEFAULT_SOURCE,
@@ -26,7 +29,11 @@ data class Settings(
 /** User preferences persisted with Jetpack DataStore. */
 class SettingsRepository(private val dataStore: DataStore<Preferences>) {
 
-    val settings: Flow<Settings> = dataStore.data.map { p ->
+    val settings: Flow<Settings> = dataStore.data
+        // An unreadable preferences file must never crash (or brick) the app: fall back to
+        // defaults; the next successful edit rewrites the file.
+        .catch { e -> if (e is IOException) emit(emptyPreferences()) else throw e }
+        .map { p ->
         Settings(
             from = Language.fromCode(p[FROM]) ?: Language.DEFAULT_SOURCE,
             to = Language.fromCode(p[TO]) ?: Language.DEFAULT_TARGET,

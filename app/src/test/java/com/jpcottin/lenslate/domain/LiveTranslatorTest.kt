@@ -225,6 +225,40 @@ class LiveTranslatorTest {
     }
 
     @Test
+    fun sourceFlowCompletion_flipsListeningOff() = runTest {
+        val source = FakeSpeechSource()
+        val translator = translator()
+        translator.start(source)
+        advanceUntilIdle()
+        assertTrue(translator.state.value.isListening)
+
+        // A real source closes its flow after a fatal error (mic revoked, service gone).
+        source.emit(SpeechEvent.Error("Microphone permission is missing", fatal = true))
+        source.complete()
+        advanceUntilIdle()
+
+        assertFalse(translator.state.value.isListening)
+        assertEquals("Microphone permission is missing", translator.state.value.error)
+    }
+
+    @Test
+    fun outOfOrderTranslations_areMatchedById() = runTest {
+        val engine = FakeTranslationEngine()
+        engine.delaysByText["Un"] = 500
+        engine.delaysByText["Deux"] = 10
+        val translator = translator(engine)
+
+        translator.submit("Un")
+        translator.submit("Deux")
+        advanceUntilIdle()
+
+        val utterances = translator.state.value.utterances
+        assertEquals(listOf("Un", "Deux"), utterances.map { it.source })
+        assertEquals("[fr→en] Un", utterances[0].translation)
+        assertEquals("[fr→en] Deux", utterances[1].translation)
+    }
+
+    @Test
     fun clear_dropsTranscript() = runTest {
         val translator = translator()
         translator.submit("Un")

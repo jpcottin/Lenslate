@@ -57,6 +57,10 @@ class ModelRepository(private val store: TranslateModelStore = MlKitModelStore()
                     language.code in downloaded -> ModelStatus.Downloaded
                     old[language] is ModelStatus.Downloading -> ModelStatus.Downloading
                     old[language] is ModelStatus.Failed -> old.getValue(language)
+                    // A refresh started before a download finished carries a stale disk snapshot;
+                    // it must not flip a just-completed download back to NotDownloaded.
+                    // (delete() sets NotDownloaded explicitly, so removals still reflect.)
+                    old[language] is ModelStatus.Downloaded -> ModelStatus.Downloaded
                     else -> ModelStatus.NotDownloaded
                 }
             }

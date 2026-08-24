@@ -32,6 +32,8 @@ class MlKitTranslationEngine : TranslationEngine {
         if (from == to) return
         try {
             translatorFor(from, to).downloadModelIfNeeded(downloadConditions).await()
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             throw TranslationException("Could not download the ${from.nativeName} → ${to.nativeName} models", e)
         }
@@ -43,6 +45,8 @@ class MlKitTranslationEngine : TranslationEngine {
         try {
             translator.downloadModelIfNeeded(downloadConditions).await()
             return translator.translate(text).await()
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             throw TranslationException(e.message ?: "On-device translation failed", e)
         }

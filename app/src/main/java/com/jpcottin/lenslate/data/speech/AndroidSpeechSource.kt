@@ -58,14 +58,28 @@ class AndroidSpeechSource(
             recognizer?.startListening(intent)
         }
 
+        var transientRetries = 0
+
         fun restart(delayMs: Long) {
             handler.postDelayed({ startListening() }, delayMs)
+        }
+
+        /** Real failures back off linearly and give up after [MAX_TRANSIENT_RETRIES]. */
+        fun retryAfterFailure(baseDelayMs: Long, reason: String) {
+            transientRetries++
+            if (transientRetries > MAX_TRANSIENT_RETRIES) {
+                trySend(SpeechEvent.Error("Speech recognition keeps failing ($reason)", fatal = true))
+                close()
+            } else {
+                restart(baseDelayMs * transientRetries)
+            }
         }
 
         lateinit var createRecognizer: () -> Unit
 
         val listener = object : RecognitionListener {
             override fun onReadyForSpeech(params: Bundle?) {
+                transientRetries = 0
                 trySend(SpeechEvent.Ready)
             }
 
@@ -94,7 +108,7 @@ class AndroidSpeechSource(
                     SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> restart(0)
 
                     SpeechRecognizer.ERROR_RECOGNIZER_BUSY,
-                    SpeechRecognizer.ERROR_CLIENT -> restart(400)
+                    SpeechRecognizer.ERROR_CLIENT -> retryAfterFailure(400, describe(error))
 
                     SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> {
                         trySend(SpeechEvent.Error("Microphone permission is missing", fatal = true))
@@ -118,7 +132,7 @@ class AndroidSpeechSource(
 
                     else -> {
                         trySend(SpeechEvent.Error(describe(error)))
-                        restart(1000)
+                        retryAfterFailure(1000, describe(error))
                     }
                 }
             }
@@ -164,5 +178,6 @@ class AndroidSpeechSource(
 
     private companion object {
         const val TAG = "AndroidSpeechSource"
+        const val MAX_TRANSIENT_RETRIES = 8
     }
 }

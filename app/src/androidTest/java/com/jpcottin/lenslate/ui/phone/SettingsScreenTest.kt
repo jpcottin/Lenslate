@@ -5,6 +5,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -25,6 +26,8 @@ class SettingsScreenTest {
     private fun setContent(
         settings: Settings,
         models: Map<Language, ModelStatus> = emptyMap(),
+        showBack: Boolean = true,
+        onBack: () -> Unit = {},
         onEngine: (EngineKind) -> Unit = {},
         onSpeak: (Boolean) -> Unit = {},
         onDownload: (Language) -> Unit = {},
@@ -34,7 +37,8 @@ class SettingsScreenTest {
             SettingsScreen(
                 settings = settings,
                 models = models,
-                onBack = {},
+                showBack = showBack,
+                onBack = onBack,
                 onEngineChange = onEngine,
                 onGeminiApiKeyChange = {},
                 onGeminiModelChange = {},
@@ -92,5 +96,19 @@ class SettingsScreenTest {
         assertEquals(Language.FRENCH, deleted)
         composeTestRule.onAllNodesWithText("Download")[0].performScrollTo().performClick()
         assertEquals(Language.ENGLISH, downloaded)
+    }
+
+    @Test
+    fun backArrow_isHiddenWhenSideBySideWithHome() {
+        setContent(Settings(), showBack = false)
+        composeTestRule.onNodeWithContentDescription("Back").assertDoesNotExist()
+    }
+
+    @Test
+    fun backArrow_isShownAndInvokesOnBack() {
+        var backs = 0
+        setContent(Settings(), showBack = true, onBack = { backs++ })
+        composeTestRule.onNodeWithContentDescription("Back").performClick()
+        assertEquals(1, backs)
     }
 }

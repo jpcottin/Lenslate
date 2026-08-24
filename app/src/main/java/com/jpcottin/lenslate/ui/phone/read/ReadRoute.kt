@@ -65,8 +65,10 @@ fun ReadRoute(
         try {
             kotlinx.coroutines.awaitCancellation()
         } finally {
-            viewModel.imageCapture = null
-            provider.unbindAll()
+            // Only clean up our own use case: a re-entered Read screen may already have bound
+            // a fresh capture by the time this disposed entry's cleanup runs.
+            if (viewModel.imageCapture === imageCapture) viewModel.imageCapture = null
+            provider.unbind(preview, imageCapture)
         }
     }
 

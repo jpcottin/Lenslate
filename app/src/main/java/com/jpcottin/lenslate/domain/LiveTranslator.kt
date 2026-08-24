@@ -74,6 +74,7 @@ class LiveTranslator(
 
     private var listenJob: Job? = null
     private var partialJob: Job? = null
+    private var prepareJob: Job? = null
     private var nextId = 1L
 
     fun setLanguages(from: Language, to: Language) {
@@ -93,11 +94,22 @@ class LiveTranslator(
         val from = state.value.from
         val to = state.value.to
         _state.update { it.copy(isListening = true, error = null) }
-        scope.launch {
+        prepareJob?.cancel()
+        prepareJob = scope.launch {
             _state.update { it.copy(isPreparing = true) }
             runCatching { engine().prepare(from, to) }
-                .onFailure { e -> _state.update { it.copy(error = e.message ?: "Could not prepare the translation engine") } }
-            _state.update { it.copy(isPreparing = false) }
+                .onFailure { e ->
+                    if (e is kotlinx.coroutines.CancellationException) throw e
+                    _state.update { it.copy(error = e.message ?: "Could not prepare the translation engine") }
+                }
+        }.also { job ->
+            job.invokeOnCompletion {
+                // A replaced prepare must not clear the flag its successor just set.
+                if (prepareJob === job) {
+                    prepareJob = null
+                    _state.update { it.copy(isPreparing = false) }
+                }
+            }
         }
         listenJob = scope.launch {
             source.listen(from)
@@ -119,6 +131,7 @@ class LiveTranslator(
     fun stop() {
         partialJob?.cancel()
         partialJob = null
+        prepareJob?.cancel()
         val job = listenJob
         listenJob = null
         currentSource = null
@@ -200,7 +213,8 @@ class LiveTranslator(
                     utterances = st.utterances.map { u ->
                         if (u.id == id) u.copy(translation = translation, error = error) else u
                     },
-                    error = error ?: st.error,
+                    // A successful translation clears the banner; a failure sets it.
+                    error = error ?: if (translation != null) null else st.error,
                 )
             }
             if (translation != null) {

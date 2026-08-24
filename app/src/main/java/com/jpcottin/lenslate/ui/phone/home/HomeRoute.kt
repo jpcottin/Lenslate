@@ -50,13 +50,19 @@ fun HomeRoute(
         onToggleListening = {
             val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
                 PackageManager.PERMISSION_GRANTED
+            if (granted) micDenied = false // granted later in system settings: drop the stale banner
             if (granted || live.isListening) viewModel.toggleListening()
             else permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
         },
         onRead = {
             val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
                 PackageManager.PERMISSION_GRANTED
-            if (granted) onOpenRead() else cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+            if (granted) {
+                cameraDenied = false
+                onOpenRead()
+            } else {
+                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+            }
         },
         onSetLanguages = viewModel::setLanguages,
         onSwapLanguages = viewModel::swapLanguages,

@@ -69,4 +69,15 @@ class TranslateTextHandlerTest {
             assertEquals("Add a Gemini API key", e.message)
         }
     }
+
+    @Test
+    fun unexpectedEngineException_isReportedAsAppUnknown_notACrash() = runTest {
+        val engine = FakeTranslationEngine(failWith = IllegalStateException("Play Services missing"))
+        try {
+            TranslateTextHandler(settings, engine).handle("Hi", "", "")
+            fail()
+        } catch (e: AppFunctionAppUnknownException) {
+            assertTrue(e.message!!.contains("Play Services missing"))
+        }
+    }
 }
