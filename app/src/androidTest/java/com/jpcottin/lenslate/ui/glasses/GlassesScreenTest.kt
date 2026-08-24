@@ -25,6 +25,7 @@ class GlassesScreenTest {
     private fun setContent(
         live: LiveTranslationState,
         showSource: Boolean = true,
+        cameraPermissionDenied: Boolean = false,
         onToggle: () -> Unit = {},
         onRead: () -> Unit = {},
     ) =
@@ -35,6 +36,7 @@ class GlassesScreenTest {
                     showSource = showSource,
                     isVisualUiSupported = true,
                     permissionDenied = false,
+                    cameraPermissionDenied = cameraPermissionDenied,
                     onToggleListening = onToggle,
                     onRead = onRead,
                     onRetryPermission = {},
@@ -103,5 +105,33 @@ class GlassesScreenTest {
     fun noTextFound_isExplained() {
         setContent(LiveTranslationState(isListening = false, error = LiveTranslator.NO_TEXT_FOUND))
         composeTestRule.onNodeWithText("Error: No text found. Try getting closer or improving the light.").assertIsDisplayed()
+    }
+
+    @Test
+    fun tappingCardWhileReading_doesNotToggleTheMicrophone() {
+        var toggles = 0
+        setContent(LiveTranslationState(isListening = true, isReading = true), onToggle = { toggles++ })
+        composeTestRule.onNodeWithText("Reading…").performClick()
+        assertEquals(0, toggles)
+    }
+
+    @Test
+    fun pausedMidSession_showsTheResumeHint() {
+        setContent(LiveTranslationState(isListening = false, utterances = listOf(Utterance(1, "Bonjour", "Hello"))))
+        composeTestRule.onNodeWithText("Tap the touchpad to resume").assertIsDisplayed()
+    }
+
+    @Test
+    fun cameraDenied_showsNoticeOnTheCard_notAFullScreenPermissionCard() {
+        setContent(
+            LiveTranslationState(isListening = true, utterances = listOf(Utterance(1, "Bonjour", "Hello"))),
+            cameraPermissionDenied = true,
+        )
+        // The transcript stays visible; the camera problem is just a notice line.
+        composeTestRule.onNodeWithText("Hello").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Error: Camera access is needed to read text. Use the camera icon to try again."
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithText("Retry").assertDoesNotExist()
     }
 }

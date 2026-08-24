@@ -59,7 +59,8 @@
     <string name="glasses_paused">Paused</string>
     <string name="glasses_tap_to_listen">Tap the touchpad to listen</string>
     <string name="glasses_permission_needed">Microphone access is needed to translate speech.</string>
-    <string name="glasses_camera_permission_needed">Camera access is needed to read text.</string>
+    <string name="glasses_camera_permission_needed">Camera access is needed to read text. Use the camera icon to try again.</string>
+    <string name="glasses_tap_to_resume">Tap the touchpad to resume</string>
     <string name="glasses_read">Read text with the camera</string>
     <string name="glasses_retry">Retry</string>
     <string name="glasses_exit">Exit</string>

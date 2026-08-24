@@ -29,11 +29,15 @@ import androidx.xr.projected.experimental.ExperimentalProjectedApi
 import com.jpcottin.lenslate.appContainer
 import com.jpcottin.lenslate.data.camera.CameraXFrameCapture
 import com.jpcottin.lenslate.domain.SpeechSource
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeout
 
 /**
  * Projected activity shown on Display AI Glasses. It runs on the phone, but because it is
@@ -104,9 +108,7 @@ class GlassesActivity : ComponentActivity() {
                         if (live.isListening) container.liveTranslator.stop() else resolveMicrophoneAndListen()
                     },
                     onRead = { readText() },
-                    onRetryPermission = {
-                        if (cameraPermissionDenied) readText() else resolveMicrophoneAndListen(forceRequest = true)
-                    },
+                    onRetryPermission = { resolveMicrophoneAndListen(forceRequest = true) },
                     onExit = { finish() },
                 )
             }
@@ -169,9 +171,12 @@ class GlassesActivity : ComponentActivity() {
 
     // ---- Read --------------------------------------------------------------------------------
 
-    private fun readText() {
+    private fun readText(fromHardwareButton: Boolean = false) {
         val container = appContainer
         if (container.liveTranslator.state.value.isReading) return
+        // An accidental hardware-button press must not re-run a denied permission flow in a
+        // loop; the on-screen camera icon remains the deliberate retry path.
+        if (fromHardwareButton && cameraPermissionDenied) return
         lifecycleScope.launch {
             val cameraContext = resolveHardwareContext(Manifest.permission.CAMERA, CAMERA_PERMISSION_REQUEST)
             if (cameraContext == null) {
@@ -226,46 +231,76 @@ class GlassesActivity : ComponentActivity() {
     /** The glasses' hardware camera button triggers Read mode. */
     private fun listenForHardwareButtons() {
         lifecycleScope.launch {
-            val compat = runCatching {
-                withTimeout(SERVICE_TIMEOUT_MS) { ProjectedActivityCompat.create(this@GlassesActivity) }
-            }.getOrElse { e ->
-                Log.w(TAG, "Projected input events unavailable", e)
-                return@launch
-            }
+            val compat = connectProjected("Projected input events", attempts = 3) {
+                ProjectedActivityCompat.create(this@GlassesActivity)
+            } ?: return@launch
             activityCompat = compat
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                compat.projectedInputEvents.collect { event ->
-                    if (event.inputAction == ProjectedInputEvent.ProjectedInputAction.TOGGLE_APP_CAMERA) {
-                        Log.i(TAG, "Camera button pressed")
-                        readText()
+                compat.projectedInputEvents
+                    // The stream must never crash the app when the glasses disconnect mid-session.
+                    .catch { e -> Log.w(TAG, "Projected input event stream failed", e) }
+                    .collect { event ->
+                        if (event.inputAction == ProjectedInputEvent.ProjectedInputAction.TOGGLE_APP_CAMERA) {
+                            Log.i(TAG, "Camera button pressed")
+                            readText(fromHardwareButton = true)
+                        }
                     }
-                }
             }
         }
+    }
+
+    /**
+     * Connects to a projected service, retrying transient failures. No outer timeout: the
+     * library's ProjectedServiceConnection enforces its own 5 s bind timeout, and cancelling
+     * `create` mid-bind would leak the service binding (bindService is issued before suspending
+     * with no cancellation cleanup). A connection that completes after the activity is destroyed
+     * is closed on the spot, since onDestroy has already run.
+     */
+    private suspend fun <T : AutoCloseable> connectProjected(
+        what: String,
+        attempts: Int = 1,
+        create: suspend () -> T,
+    ): T? {
+        repeat(attempts) { attempt ->
+            try {
+                val connection = create()
+                if (lifecycle.currentState == Lifecycle.State.DESTROYED) {
+                    connection.close()
+                    return null
+                }
+                return connection
+            } catch (e: CancellationException) {
+                // Our own scope was cancelled (lifecycle teardown): propagate silently.
+                if (!currentCoroutineContext().isActive) throw e
+                // Otherwise it is the library's internal bind timeout.
+                Log.w(TAG, "$what timed out (attempt ${attempt + 1}/$attempts)")
+            } catch (e: Exception) {
+                Log.w(TAG, "$what unavailable (attempt ${attempt + 1}/$attempts)", e)
+            }
+            if (attempt < attempts - 1) delay(SERVICE_RETRY_DELAY_MS)
+        }
+        return null
     }
 
     // ---- Glasses device ----------------------------------------------------------------------
 
     private fun initializeGlassesFeatures() {
         lifecycleScope.launch {
-            runCatching {
-                withTimeout(SERVICE_TIMEOUT_MS) {
-                    ProjectedDeviceController.create(this@GlassesActivity).use { controller ->
-                        isVisualUiSupported =
-                            controller.capabilities.contains(ProjectedDeviceController.Capability.CAPABILITY_VISUAL_UI)
-                    }
+            connectProjected("Glasses capabilities") {
+                ProjectedDeviceController.create(this@GlassesActivity)
+            }?.use { controller ->
+                isVisualUiSupported =
+                    controller.capabilities.contains(ProjectedDeviceController.Capability.CAPABILITY_VISUAL_UI)
+            }
+            connectProjected("Glasses display controller") {
+                ProjectedDisplayController.create(this@GlassesActivity)
+            }?.let { controller ->
+                displayController = controller
+                controller.addLayoutParamsFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                controller.addPresentationModeChangedListener(ContextCompat.getMainExecutor(this@GlassesActivity)) { flags ->
+                    areVisualsOn = flags.hasPresentationMode(ProjectedDisplayController.PresentationMode.VISUALS_ON)
                 }
-            }.onFailure { Log.w(TAG, "Could not read glasses capabilities", it) }
-            runCatching {
-                withTimeout(SERVICE_TIMEOUT_MS) {
-                    val controller = ProjectedDisplayController.create(this@GlassesActivity)
-                    displayController = controller
-                    controller.addLayoutParamsFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-                    controller.addPresentationModeChangedListener(ContextCompat.getMainExecutor(this@GlassesActivity)) { flags ->
-                        areVisualsOn = flags.hasPresentationMode(ProjectedDisplayController.PresentationMode.VISUALS_ON)
-                    }
-                }
-            }.onFailure { Log.w(TAG, "Could not attach to the glasses display controller", it) }
+            }
         }
     }
 
@@ -273,6 +308,6 @@ class GlassesActivity : ComponentActivity() {
         const val TAG = "GlassesActivity"
         const val MIC_PERMISSION_REQUEST = 1001
         const val CAMERA_PERMISSION_REQUEST = 1002
-        const val SERVICE_TIMEOUT_MS = 5_000L
+        const val SERVICE_RETRY_DELAY_MS = 2_000L
     }
 }

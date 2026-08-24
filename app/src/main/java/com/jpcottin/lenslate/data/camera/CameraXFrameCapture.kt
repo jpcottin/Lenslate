@@ -55,7 +55,8 @@ class CameraXFrameCapture(
             )
             .build()
         try {
-            provider.unbindAll()
+            // Bind only this use case: unbindAll() would tear down use cases other surfaces
+            // (like the phone Read screen's viewfinder) have bound on the shared provider.
             provider.bindToLifecycle(lifecycleOwner, selector, useCase)
             takePicture(useCase)
         } finally {

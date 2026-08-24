@@ -15,10 +15,16 @@ import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.MicOff
 import androidx.compose.material.icons.rounded.PhotoCamera
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -58,7 +64,7 @@ fun GlassesScreen(
     onRetryPermission: () -> Unit,
     onExit: () -> Unit,
     modifier: Modifier = Modifier,
-    /** When the denied permission is the camera (Read mode) rather than the microphone. */
+    /** Camera unavailable for Read mode; shown as a notice on the card, listening continues. */
     cameraPermissionDenied: Boolean = false,
 ) {
     Box(
@@ -68,11 +74,8 @@ fun GlassesScreen(
         contentAlignment = Alignment.BottomCenter,
     ) {
         when {
-            permissionDenied || cameraPermissionDenied -> PermissionCard(
-                message = stringResource(
-                    if (cameraPermissionDenied) R.string.glasses_camera_permission_needed
-                    else R.string.glasses_permission_needed
-                ),
+            permissionDenied -> PermissionCard(
+                message = stringResource(R.string.glasses_permission_needed),
                 onRetry = onRetryPermission,
                 onExit = onExit,
             )
@@ -81,7 +84,7 @@ fun GlassesScreen(
                 style = GlimmerTheme.typography.bodySmall,
                 modifier = Modifier.padding(16.dp),
             )
-            else -> TranslationCard(live, showSource, onToggleListening, onRead)
+            else -> TranslationCard(live, showSource, cameraPermissionDenied, onToggleListening, onRead)
         }
     }
 }
@@ -90,6 +93,7 @@ fun GlassesScreen(
 private fun TranslationCard(
     live: LiveTranslationState,
     showSource: Boolean,
+    cameraPermissionDenied: Boolean,
     onToggleListening: () -> Unit,
     onRead: () -> Unit,
 ) {
@@ -105,9 +109,10 @@ private fun TranslationCard(
         live.isListening -> stringResource(R.string.glasses_listening)
         else -> stringResource(R.string.glasses_paused)
     }
-    val error = when (live.error) {
-        null -> null
-        LiveTranslator.NO_TEXT_FOUND -> stringResource(R.string.read_no_text)
+    val error = when {
+        cameraPermissionDenied -> stringResource(R.string.glasses_camera_permission_needed)
+        live.error == null -> null
+        live.error == LiveTranslator.NO_TEXT_FOUND -> stringResource(R.string.read_no_text)
         else -> live.error
     }
 
@@ -132,9 +137,16 @@ private fun TranslationCard(
             Text("${live.from.shortLabel} → ${live.to.shortLabel}", maxLines = 1)
         }
         Spacer(Modifier.height(TitleChipDefaults.associatedContentSpacing))
+        // The card comes back after the permission screen; put the touchpad focus back on it.
+        val cardFocus = remember { FocusRequester() }
+        LaunchedEffect(Unit) { runCatching { cardFocus.requestFocus() } }
         Card(
-            onClick = onToggleListening,
-            modifier = Modifier.fillMaxWidth(),
+            // While a read is in flight a tap must not silently flip the microphone.
+            onClick = { if (!live.isReading) onToggleListening() },
+            modifier = Modifier
+                .fillMaxWidth()
+                .focusRequester(cardFocus)
+                .semantics { stateDescription = status },
             title = { Text(status, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -160,7 +172,16 @@ private fun TranslationCard(
                         )
                     }
                 }
-                if (error != null && (!live.isListening || translation.isEmpty())) {
+                if (!live.isListening && !live.isReading && (translation.isNotEmpty() || source.isNotEmpty())) {
+                    // Mid-session pause: teach that a bare touchpad tap resumes.
+                    Text(
+                        stringResource(R.string.glasses_tap_to_resume),
+                        style = GlimmerTheme.typography.caption,
+                        color = GlimmerTheme.colors.outline,
+                        maxLines = 1,
+                    )
+                }
+                if (error != null && (!live.isListening || translation.isEmpty() || cameraPermissionDenied)) {
                     Text(
                         stringResource(R.string.glasses_error_prefix, error),
                         style = GlimmerTheme.typography.caption,
