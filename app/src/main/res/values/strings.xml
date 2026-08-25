@@ -17,6 +17,9 @@
     <string name="listening">Listening…</string>
     <string name="transcript_empty">Tap Listen and start talking. Translations appear here and on your glasses.</string>
     <string name="clear_transcript">Clear transcript</string>
+    <string name="share_transcript">Share transcript</string>
+    <string name="share_transcript_header">Lenslate transcript (%1$s → %2$s)</string>
+    <string name="copy_translation">Copy</string>
     <string name="read">Read</string>
     <string name="read_title">Read text</string>
     <string name="read_hint">Point the camera at a sign or a menu and tap the shutter.</string>

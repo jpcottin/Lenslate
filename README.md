@@ -29,7 +29,7 @@ Lenslate is a *hybrid* app, following the [AI glasses activity model](https://de
 
 | Surface | Activity | UI toolkit | Role |
 |---|---|---|---|
-| Phone | `MainActivity` | Material 3 (adaptive, Navigation 3) | Pick the language pair, manage offline models, choose the engine, read the transcript, **Launch on glasses** |
+| Phone | `MainActivity` | Material 3 (adaptive, Navigation 3) | Pick the language pair, manage offline models, choose the engine, read the transcript (copy a line or share it all), **Launch on glasses** |
 | Glasses | `GlassesActivity` (`xr_projected`) | [Jetpack Compose Glimmer](https://developer.android.com/develop/xr/jetpack-xr-sdk/jetpack-compose-glimmer) | One bottom-aligned card: latest translation, original sentence underneath, `FR → EN` title chip; tap the touchpad to pause/resume listening (the card holds the focus), swipe to the camera icon and tap — or press the glasses’ hardware **camera button** — to read |
 
 Both surfaces observe the **same** `LiveTranslator` pipeline, so the phone shows live what the
