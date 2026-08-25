@@ -35,6 +35,8 @@ class HomeScreenTest {
         onSwap: () -> Unit = {},
         onLaunch: () -> Unit = {},
         onRead: () -> Unit = {},
+        onShare: () -> Unit = {},
+        onCopy: (Utterance) -> Unit = {},
     ) = composeTestRule.setContent {
         LenslateTheme {
             HomeScreen(
@@ -48,6 +50,8 @@ class HomeScreenTest {
                 onSetLanguages = { _, _ -> },
                 onSwapLanguages = onSwap,
                 onClearTranscript = {},
+                onShareTranscript = onShare,
+                onCopyUtterance = onCopy,
                 onOpenSettings = {},
                 onLaunchOnGlasses = onLaunch,
                 isWideWindow = false,
@@ -128,6 +132,39 @@ class HomeScreenTest {
         composeTestRule.onNodeWithText("…").assertIsDisplayed()
         composeTestRule.onNodeWithText("boom").assertIsDisplayed()
         composeTestRule.onNodeWithContentDescription("Clear transcript").assertIsEnabled()
+    }
+
+    @Test
+    fun shareButton_isDisabledWhenTranscriptIsEmpty() {
+        setContent(LiveTranslationState())
+        composeTestRule.onNodeWithContentDescription("Share transcript").assertIsNotEnabled()
+    }
+
+    @Test
+    fun shareButton_invokesCallbackWhenTranscriptHasContent() {
+        var shares = 0
+        setContent(
+            LiveTranslationState(utterances = listOf(Utterance(1, "Bonjour", "Hello"))),
+            onShare = { shares++ },
+        )
+        composeTestRule.onNodeWithContentDescription("Share transcript").assertIsEnabled().performClick()
+        assertEquals(1, shares)
+    }
+
+    @Test
+    fun copyButton_invokesCallbackWithItsUtterance_andPartialRowHasNone() {
+        val copied = mutableListOf<Utterance>()
+        setContent(
+            LiveTranslationState(
+                utterances = listOf(Utterance(1, "Bonjour", "Hello"), Utterance(2, "Merci", "Thanks")),
+                partialSource = "Comment ça va",
+            ),
+            onCopy = { copied += it },
+        )
+        // One copy button per finished row, none on the partial row.
+        composeTestRule.onAllNodesWithContentDescription("Copy").assertCountEquals(2)
+        composeTestRule.onAllNodesWithContentDescription("Copy")[1].performClick()
+        assertEquals(listOf("Merci"), copied.map { it.source })
     }
 
     @Test

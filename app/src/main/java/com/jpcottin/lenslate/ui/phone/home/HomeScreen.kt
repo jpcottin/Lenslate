@@ -18,10 +18,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
+import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.DeleteSweep
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.PhotoCamera
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material.icons.rounded.Visibility
@@ -92,6 +94,8 @@ fun HomeScreen(
     onSetLanguages: (Language, Language) -> Unit,
     onSwapLanguages: () -> Unit,
     onClearTranscript: () -> Unit,
+    onShareTranscript: () -> Unit,
+    onCopyUtterance: (Utterance) -> Unit,
     onOpenSettings: () -> Unit,
     onLaunchOnGlasses: () -> Unit,
     modifier: Modifier = Modifier,
@@ -108,6 +112,9 @@ fun HomeScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.home_title)) },
                 actions = {
+                    IconButton(onClick = onShareTranscript, enabled = live.utterances.isNotEmpty()) {
+                        Icon(Icons.Rounded.Share, contentDescription = stringResource(R.string.share_transcript))
+                    }
                     IconButton(onClick = onClearTranscript, enabled = live.utterances.isNotEmpty()) {
                         Icon(Icons.Rounded.DeleteSweep, contentDescription = stringResource(R.string.clear_transcript))
                     }
@@ -157,7 +164,7 @@ fun HomeScreen(
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 controls(Modifier.width(360.dp))
-                Transcript(live, Modifier.weight(1f), bottomPadding = 88.dp)
+                Transcript(live, onCopyUtterance, Modifier.weight(1f), bottomPadding = 88.dp)
             }
         } else {
             Column(
@@ -168,7 +175,7 @@ fun HomeScreen(
             ) {
                 controls(Modifier.fillMaxWidth())
                 Spacer(Modifier.height(12.dp))
-                Transcript(live, Modifier.weight(1f), bottomPadding = 88.dp)
+                Transcript(live, onCopyUtterance, Modifier.weight(1f), bottomPadding = 88.dp)
             }
         }
     }
@@ -322,7 +329,12 @@ private fun StatusBanner(
 }
 
 @Composable
-private fun Transcript(live: LiveTranslationState, modifier: Modifier = Modifier, bottomPadding: androidx.compose.ui.unit.Dp) {
+private fun Transcript(
+    live: LiveTranslationState,
+    onCopyUtterance: (Utterance) -> Unit,
+    modifier: Modifier = Modifier,
+    bottomPadding: androidx.compose.ui.unit.Dp,
+) {
     val listState = rememberLazyListState()
     val itemCount = live.utterances.size + if (live.partialSource.isNotEmpty()) 1 else 0
     LaunchedEffect(itemCount, live.partialTranslation) {
@@ -346,41 +358,59 @@ private fun Transcript(live: LiveTranslationState, modifier: Modifier = Modifier
         verticalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = PaddingValues(top = 4.dp, bottom = bottomPadding),
     ) {
-        items(live.utterances, key = { it.id }) { utterance -> UtteranceItem(utterance) }
+        items(live.utterances, key = { it.id }) { utterance ->
+            UtteranceItem(utterance, onCopy = { onCopyUtterance(utterance) })
+        }
         if (live.partialSource.isNotEmpty()) {
             item(key = "partial") {
-                UtteranceItem(Utterance(id = -1, source = live.partialSource, translation = live.partialTranslation), isPartial = true)
+                UtteranceItem(
+                    Utterance(id = -1, source = live.partialSource, translation = live.partialTranslation),
+                    onCopy = {},
+                    isPartial = true,
+                )
             }
         }
     }
 }
 
 @Composable
-private fun UtteranceItem(utterance: Utterance, isPartial: Boolean = false) {
+private fun UtteranceItem(utterance: Utterance, onCopy: () -> Unit, isPartial: Boolean = false) {
     Card(
         Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = if (isPartial) MaterialTheme.colorScheme.surfaceContainerLow else MaterialTheme.colorScheme.surfaceContainer
         ),
     ) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                utterance.source,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontStyle = if (isPartial) FontStyle.Italic else FontStyle.Normal,
-            )
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Icon(
-                    if (utterance.kind == UtteranceKind.READ) Icons.Rounded.PhotoCamera else Icons.AutoMirrored.Rounded.ArrowForward,
-                    contentDescription = if (utterance.kind == UtteranceKind.READ) stringResource(R.string.read) else null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.width(16.dp),
+        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.Top) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    utterance.source,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontStyle = if (isPartial) FontStyle.Italic else FontStyle.Normal,
                 )
-                when {
-                    utterance.error != null -> Text(utterance.error, color = MaterialTheme.colorScheme.error)
-                    utterance.translation.isNullOrEmpty() -> Text("…", style = MaterialTheme.typography.titleMedium)
-                    else -> Text(utterance.translation, style = MaterialTheme.typography.titleMedium)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Icon(
+                        if (utterance.kind == UtteranceKind.READ) Icons.Rounded.PhotoCamera else Icons.AutoMirrored.Rounded.ArrowForward,
+                        contentDescription = if (utterance.kind == UtteranceKind.READ) stringResource(R.string.read) else null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.width(16.dp),
+                    )
+                    when {
+                        utterance.error != null -> Text(utterance.error, color = MaterialTheme.colorScheme.error)
+                        utterance.translation.isNullOrEmpty() -> Text("…", style = MaterialTheme.typography.titleMedium)
+                        else -> Text(utterance.translation, style = MaterialTheme.typography.titleMedium)
+                    }
+                }
+            }
+            if (!isPartial) {
+                IconButton(onClick = onCopy, modifier = Modifier.size(32.dp)) {
+                    Icon(
+                        Icons.Rounded.ContentCopy,
+                        contentDescription = stringResource(R.string.copy_translation),
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
         }
@@ -402,6 +432,8 @@ private fun HomeScreenPreview() {
             onSetLanguages = { _, _ -> },
             onSwapLanguages = {},
             onClearTranscript = {},
+            onShareTranscript = {},
+            onCopyUtterance = {},
             onOpenSettings = {},
             onLaunchOnGlasses = {},
             isWideWindow = false,
@@ -424,6 +456,8 @@ private fun HomeScreenWidePreview() {
             onSetLanguages = { _, _ -> },
             onSwapLanguages = {},
             onClearTranscript = {},
+            onShareTranscript = {},
+            onCopyUtterance = {},
             onOpenSettings = {},
             onLaunchOnGlasses = {},
             isWideWindow = true,

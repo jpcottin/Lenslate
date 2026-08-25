@@ -33,6 +33,8 @@ private fun homeScreen(live: LiveTranslationState, connected: Boolean, wide: Boo
             onSetLanguages = { _, _ -> },
             onSwapLanguages = {},
             onClearTranscript = {},
+            onShareTranscript = {},
+            onCopyUtterance = {},
             onOpenSettings = {},
             onLaunchOnGlasses = {},
             isWideWindow = wide,
