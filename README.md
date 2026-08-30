@@ -41,7 +41,8 @@ the glasses' microphone); the phone's *Listen* button uses the phone's.
 
 - **Listen** — continuous speech recognition in the source language (on-device when the phone
   has it, otherwise the default recognition service), sentence by sentence; interim hypotheses are
-  translated live on-device.
+  translated live on-device. While a translation is spoken aloud the microphone is suspended
+  (half-duplex), so the app never hears its own voice and translates it again.
 - **Read** — one snapshot: on the glasses, the outward camera through the projected context
   (CameraX `ImageCapture`, bound only for the capture so nothing streams otherwise); on the phone,
   a viewfinder with a shutter. The snapshot goes through ML Kit Text Recognition v2 (Latin model,

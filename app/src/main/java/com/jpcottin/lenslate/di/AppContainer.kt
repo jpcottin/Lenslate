@@ -9,6 +9,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.jpcottin.lenslate.data.settings.Settings
 import com.jpcottin.lenslate.data.settings.SettingsRepository
 import com.jpcottin.lenslate.data.speech.AndroidSpeechSource
+import com.jpcottin.lenslate.data.speech.HalfDuplexSpeechSource
 import com.jpcottin.lenslate.data.speech.InjectableSpeechSource
 import com.jpcottin.lenslate.data.translate.GeminiTranslationEngine
 import com.jpcottin.lenslate.data.translate.MlKitTranslationEngine
@@ -83,7 +84,7 @@ class AppContainer(private val appContext: Context) {
         partialTranslationEnabled = { settings.value.engine == EngineKind.ON_DEVICE },
     )
 
-    val speaker = TranslationSpeaker(appContext)
+    val speaker = TranslationSpeaker(appContext, appScope)
 
     /** On-device OCR for Read mode. */
     val textRecognizer = MlKitTextRecognizer()
@@ -105,10 +106,13 @@ class AppContainer(private val appContext: Context) {
 
     /**
      * Speech from the microphone reachable through [context]: pass the projected activity for the
-     * glasses' microphone, or a phone context for the phone's. Debug builds and tests can also
-     * inject sentences through [com.jpcottin.lenslate.data.speech.UtteranceInjector].
+     * glasses' microphone, or a phone context for the phone's. The microphone is suspended while
+     * a translation is spoken aloud, so the recognizer does not hear the app's own voice and
+     * translate it again. Debug builds and tests can also inject sentences through
+     * [com.jpcottin.lenslate.data.speech.UtteranceInjector]; injection bypasses the mute.
      */
-    fun speechSource(context: Context): SpeechSource = InjectableSpeechSource(AndroidSpeechSource(context))
+    fun speechSource(context: Context): SpeechSource =
+        InjectableSpeechSource(HalfDuplexSpeechSource(AndroidSpeechSource(context), speaker.isSpeaking))
 
     /**
      * The phone's own context, explicitly via the host device context: the application context
