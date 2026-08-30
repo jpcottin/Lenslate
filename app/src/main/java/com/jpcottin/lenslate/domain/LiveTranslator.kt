@@ -180,7 +180,13 @@ class LiveTranslator(
         when (event) {
             SpeechEvent.Ready -> _state.update { it.copy(error = null) }
             is SpeechEvent.Partial -> {
-                _state.update { it.copy(partialSource = event.text) }
+                // A blank partial withdraws the current hypothesis (mic muted mid-sentence).
+                _state.update {
+                    it.copy(
+                        partialSource = event.text,
+                        partialTranslation = if (event.text.isBlank()) "" else it.partialTranslation,
+                    )
+                }
                 schedulePartialTranslation(event.text)
             }
             is SpeechEvent.Final -> {
