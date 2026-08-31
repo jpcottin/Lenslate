@@ -45,6 +45,7 @@ import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SmallFloatingActionButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -93,6 +94,7 @@ fun HomeScreen(
     onRead: () -> Unit,
     onSetLanguages: (Language, Language) -> Unit,
     onSwapLanguages: () -> Unit,
+    onConversationModeChange: (Boolean) -> Unit,
     onClearTranscript: () -> Unit,
     onShareTranscript: () -> Unit,
     onCopyUtterance: (Utterance) -> Unit,
@@ -151,7 +153,7 @@ fun HomeScreen(
         val controls: @Composable (Modifier) -> Unit = { m ->
             Column(m, verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 GlassesCard(glassesConnected, launchError, onLaunchOnGlasses)
-                LanguagePairCard(settings, onSetLanguages, onSwapLanguages)
+                LanguagePairCard(settings, onSetLanguages, onSwapLanguages, onConversationModeChange)
                 StatusBanner(live, settings, micPermissionDenied, cameraPermissionDenied)
             }
         }
@@ -218,6 +220,7 @@ private fun LanguagePairCard(
     settings: Settings,
     onSetLanguages: (Language, Language) -> Unit,
     onSwap: () -> Unit,
+    onConversationModeChange: (Boolean) -> Unit,
 ) {
     Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
         Row(
@@ -240,6 +243,21 @@ private fun LanguagePairCard(
                 onSelect = { onSetLanguages(settings.from, it) },
                 modifier = Modifier.weight(1f),
             )
+        }
+        Row(
+            Modifier.padding(start = 12.dp, end = 12.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.conversation_mode), style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    stringResource(R.string.conversation_mode_summary),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Switch(checked = settings.conversationMode, onCheckedChange = onConversationModeChange)
         }
     }
 }
@@ -431,6 +449,7 @@ private fun HomeScreenPreview() {
             onRead = {},
             onSetLanguages = { _, _ -> },
             onSwapLanguages = {},
+            onConversationModeChange = {},
             onClearTranscript = {},
             onShareTranscript = {},
             onCopyUtterance = {},
@@ -455,6 +474,7 @@ private fun HomeScreenWidePreview() {
             onRead = {},
             onSetLanguages = { _, _ -> },
             onSwapLanguages = {},
+            onConversationModeChange = {},
             onClearTranscript = {},
             onShareTranscript = {},
             onCopyUtterance = {},

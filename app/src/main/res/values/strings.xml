@@ -12,6 +12,8 @@
     <string name="from_language">From</string>
     <string name="to_language">To</string>
     <string name="swap_languages">Swap languages</string>
+    <string name="conversation_mode">Conversation mode</string>
+    <string name="conversation_mode_summary">Swap the direction after each translation, so two people can alternate.</string>
     <string name="listen">Listen</string>
     <string name="stop_listening">Stop</string>
     <string name="listening">Listening…</string>

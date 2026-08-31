@@ -76,6 +76,7 @@ fun HomeRoute(
         },
         onSetLanguages = viewModel::setLanguages,
         onSwapLanguages = viewModel::swapLanguages,
+        onConversationModeChange = viewModel::setConversationMode,
         onClearTranscript = viewModel::clearTranscript,
         onShareTranscript = {
             val send = Intent(Intent.ACTION_SEND).apply {

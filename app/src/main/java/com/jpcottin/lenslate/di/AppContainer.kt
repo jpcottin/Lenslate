@@ -16,6 +16,7 @@ import com.jpcottin.lenslate.data.translate.MlKitTranslationEngine
 import com.jpcottin.lenslate.data.translate.ModelRepository
 import com.jpcottin.lenslate.data.ocr.MlKitTextRecognizer
 import com.jpcottin.lenslate.data.tts.TranslationSpeaker
+import com.jpcottin.lenslate.domain.ConversationDirector
 import com.jpcottin.lenslate.domain.EngineKind
 import com.jpcottin.lenslate.domain.LiveTranslator
 import com.jpcottin.lenslate.domain.SpeechSource
@@ -89,13 +90,21 @@ class AppContainer(private val appContext: Context) {
     /** On-device OCR for Read mode. */
     val textRecognizer = MlKitTextRecognizer()
 
+    /** Speaks each translation aloud and, in conversation mode, swaps the direction after it. */
+    private val conversationDirector = ConversationDirector(
+        translated = liveTranslator.translated,
+        isSpeaking = speaker.isSpeaking,
+        speakEnabled = { settings.value.speakTranslations },
+        conversationMode = { settings.value.conversationMode },
+        speak = { translation -> speaker.speak(translation, settings.value.to) },
+        swapLanguages = {
+            val s = settings.value
+            settingsRepository.setLanguages(s.to, s.from)
+        },
+    )
+
     init {
-        appScope.launch {
-            liveTranslator.translated.collect { utterance ->
-                val s = settings.value
-                if (s.speakTranslations) speaker.speak(utterance.translation.orEmpty(), s.to)
-            }
-        }
+        conversationDirector.start(appScope)
         appScope.launch {
             settingsRepository.settings.collect { s ->
                 settingsSnapshot = s
