@@ -166,7 +166,7 @@ private fun TranslationCard(
                         Text(
                             source,
                             style = GlimmerTheme.typography.caption,
-                            color = GlimmerTheme.colors.outline,
+                            color = DimmedCaption,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                         )
@@ -177,7 +177,7 @@ private fun TranslationCard(
                     Text(
                         stringResource(R.string.glasses_tap_to_resume),
                         style = GlimmerTheme.typography.caption,
-                        color = GlimmerTheme.colors.outline,
+                        color = DimmedCaption,
                         maxLines = 1,
                     )
                 }
@@ -217,6 +217,13 @@ private fun PermissionCard(message: String, onRetry: () -> Unit, onExit: () -> U
         }
     }
 }
+
+/**
+ * De-emphasized caption color. Glimmer 1.0.0-alpha18 removed `Colors.outline` (and its gray),
+ * and the remaining `secondary` is a focal blue; on the additive display, dimming the card's
+ * white content color reads as the same recessed gray the outline token used to give.
+ */
+private val DimmedCaption = Color.White.copy(alpha = 0.38f)
 
 /** The projected display of the Display AI Glasses emulator is 450×394 dp at 160 dpi. */
 @Preview(name = "Glasses", device = "spec:width=450dp,height=394dp,dpi=160", showBackground = true, backgroundColor = 0xFF000000)
