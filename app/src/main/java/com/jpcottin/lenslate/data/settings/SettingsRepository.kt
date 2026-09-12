@@ -21,6 +21,7 @@ data class Settings(
     val geminiApiKey: String = "",
     val geminiModel: String = BuildConfig.GEMINI_DEFAULT_MODEL,
     val speakTranslations: Boolean = false,
+    val conversationMode: Boolean = false,
     val showSourceOnGlasses: Boolean = true,
 ) {
     val isGeminiConfigured: Boolean get() = geminiApiKey.isNotBlank()
@@ -41,6 +42,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
             geminiApiKey = p[GEMINI_API_KEY].orEmpty(),
             geminiModel = p[GEMINI_MODEL]?.takeIf { it.isNotBlank() } ?: BuildConfig.GEMINI_DEFAULT_MODEL,
             speakTranslations = p[SPEAK_TRANSLATIONS] ?: false,
+            conversationMode = p[CONVERSATION_MODE] ?: false,
             showSourceOnGlasses = p[SHOW_SOURCE_ON_GLASSES] ?: true,
         )
     }
@@ -54,6 +56,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     suspend fun setGeminiApiKey(key: String) = dataStore.edit { it[GEMINI_API_KEY] = key.trim() }
     suspend fun setGeminiModel(model: String) = dataStore.edit { it[GEMINI_MODEL] = model.trim() }
     suspend fun setSpeakTranslations(enabled: Boolean) = dataStore.edit { it[SPEAK_TRANSLATIONS] = enabled }
+    suspend fun setConversationMode(enabled: Boolean) = dataStore.edit { it[CONVERSATION_MODE] = enabled }
     suspend fun setShowSourceOnGlasses(enabled: Boolean) = dataStore.edit { it[SHOW_SOURCE_ON_GLASSES] = enabled }
 
     private companion object {
@@ -63,6 +66,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         val GEMINI_API_KEY = stringPreferencesKey("gemini_api_key")
         val GEMINI_MODEL = stringPreferencesKey("gemini_model")
         val SPEAK_TRANSLATIONS = booleanPreferencesKey("speak_translations")
+        val CONVERSATION_MODE = booleanPreferencesKey("conversation_mode")
         val SHOW_SOURCE_ON_GLASSES = booleanPreferencesKey("show_source_on_glasses")
     }
 }

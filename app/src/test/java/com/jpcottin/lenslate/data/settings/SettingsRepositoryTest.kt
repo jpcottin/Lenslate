@@ -34,6 +34,7 @@ class SettingsRepositoryTest {
         assertEquals(EngineKind.ON_DEVICE, s.engine)
         assertEquals("gemini-2.5-flash", s.geminiModel)
         assertFalse(s.speakTranslations)
+        assertFalse(s.conversationMode)
         assertTrue(s.showSourceOnGlasses)
         assertFalse(s.isGeminiConfigured)
     }
@@ -46,6 +47,7 @@ class SettingsRepositoryTest {
         repo.setGeminiApiKey("  key  ")
         repo.setGeminiModel("gemini-2.5-pro")
         repo.setSpeakTranslations(true)
+        repo.setConversationMode(true)
         repo.setShowSourceOnGlasses(false)
 
         val s = repo.settings.first()
@@ -56,6 +58,7 @@ class SettingsRepositoryTest {
         assertTrue(s.isGeminiConfigured)
         assertEquals("gemini-2.5-pro", s.geminiModel)
         assertTrue(s.speakTranslations)
+        assertTrue(s.conversationMode)
         assertFalse(s.showSourceOnGlasses)
     }
 

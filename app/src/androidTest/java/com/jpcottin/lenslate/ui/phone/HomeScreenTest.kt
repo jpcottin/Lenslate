@@ -49,6 +49,7 @@ class HomeScreenTest {
                 onRead = onRead,
                 onSetLanguages = { _, _ -> },
                 onSwapLanguages = onSwap,
+                onConversationModeChange = {},
                 onClearTranscript = {},
                 onShareTranscript = onShare,
                 onCopyUtterance = onCopy,

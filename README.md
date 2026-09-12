@@ -43,6 +43,11 @@ the glasses' microphone); the phone's *Listen* button uses the phone's.
   has it, otherwise the default recognition service), sentence by sentence; interim hypotheses are
   translated live on-device. While a translation is spoken aloud the microphone is suspended
   (half-duplex), so the app never hears its own voice and translates it again.
+- **Conversation mode** — a switch under the language pair on the phone. After each spoken
+  sentence is translated (and, with sound on, spoken aloud), the direction reverses
+  automatically, so two people can alternate without touching the swap button. The swap happens
+  exactly when the half-duplex microphone reopens; reading a sign mid-conversation does not
+  swap.
 - **Read** — one snapshot: on the glasses, the outward camera through the projected context
   (CameraX `ImageCapture`, bound only for the capture so nothing streams otherwise); on the phone,
   a viewfinder with a shutter. The snapshot goes through ML Kit Text Recognition v2 (Latin model,
@@ -138,7 +143,6 @@ runs the app and verifies an injected utterance and an OCR'd sign with `android 
 
 ## Roadmap
 
-- Conversation mode (alternate directions automatically).
 - Japanese OCR quality checks on real signs (vertical text).
 
 ## License

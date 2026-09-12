@@ -32,6 +32,7 @@ private fun homeScreen(live: LiveTranslationState, connected: Boolean, wide: Boo
             onRead = {},
             onSetLanguages = { _, _ -> },
             onSwapLanguages = {},
+            onConversationModeChange = {},
             onClearTranscript = {},
             onShareTranscript = {},
             onCopyUtterance = {},

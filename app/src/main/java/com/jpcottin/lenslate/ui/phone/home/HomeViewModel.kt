@@ -34,5 +34,9 @@ class HomeViewModel(
 
     fun swapLanguages() = setLanguages(settings.value.to, settings.value.from)
 
+    fun setConversationMode(enabled: Boolean) {
+        viewModelScope.launch { container.settingsRepository.setConversationMode(enabled) }
+    }
+
     fun clearTranscript() = container.liveTranslator.clear()
 }
