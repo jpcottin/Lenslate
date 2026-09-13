@@ -24,7 +24,7 @@ mlkitTextRecognition = "16.0.1"
 camerax = "1.6.1"
 # Jetpack XR: Glimmer UI toolkit for Display AI Glasses + projected activities/contexts
 glimmer = "1.0.0-alpha18"
-xrProjected = "1.0.0-alpha11"
+xrProjected = "1.0.0-alpha12"
 xrRuntime = "1.0.0-beta02"
 appfunctions = "1.0.0-alpha09"
 screenshot = "0.0.1-alpha15"
