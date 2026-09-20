@@ -136,7 +136,12 @@ class GlassesActivity : ComponentActivity() {
         super.onDestroy()
     }
 
-    /** Result of [ProjectedActivityCompat.requestPermissions] (glasses-specific permission). */
+    /**
+     * Result of [ProjectedActivityCompat.requestPermissions] (glasses-specific permission). The
+     * projected library has no Activity Result contract yet: this deprecated callback is the only
+     * way it reports the outcome.
+     */
+    @Suppress("OVERRIDE_DEPRECATION", "DEPRECATION")
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         val granted = permissions.indices.all { grantResults.getOrNull(it) == PackageManager.PERMISSION_GRANTED }
