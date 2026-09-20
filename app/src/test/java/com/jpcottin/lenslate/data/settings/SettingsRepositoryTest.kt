@@ -25,10 +25,16 @@ private class FakeDataStore(initial: Preferences = emptyPreferences()) : DataSto
     }
 }
 
+/** Reversible stand-in for the Keystore: "enc:" + the reversed secret. */
+private object FakeCipher : SecretCipher {
+    override fun encrypt(plain: String) = "enc:" + plain.reversed()
+    override fun decrypt(stored: String) = stored.takeIf { it.startsWith("enc:") }?.removePrefix("enc:")?.reversed()
+}
+
 class SettingsRepositoryTest {
     @Test
     fun defaults() = runTest {
-        val s = SettingsRepository(FakeDataStore()).settings.first()
+        val s = SettingsRepository(FakeDataStore(), FakeCipher).settings.first()
         assertEquals(Language.FRENCH, s.from)
         assertEquals(Language.ENGLISH, s.to)
         assertEquals(EngineKind.ON_DEVICE, s.engine)
@@ -41,7 +47,7 @@ class SettingsRepositoryTest {
 
     @Test
     fun roundTrip() = runTest {
-        val repo = SettingsRepository(FakeDataStore())
+        val repo = SettingsRepository(FakeDataStore(), FakeCipher)
         repo.setLanguages(Language.JAPANESE, Language.GERMAN)
         repo.setEngine(EngineKind.GEMINI)
         repo.setGeminiApiKey("  key  ")
@@ -72,9 +78,58 @@ class SettingsRepositoryTest {
                 this[stringPreferencesKey("gemini_model")] = "   "
             }
         }
-        val s = SettingsRepository(store).settings.first()
+        val s = SettingsRepository(store, FakeCipher).settings.first()
         assertEquals(Language.FRENCH, s.from)
         assertEquals(EngineKind.ON_DEVICE, s.engine)
         assertEquals("gemini-2.5-flash", s.geminiModel)
+    }
+
+    @Test
+    fun apiKey_isNeverStoredInPlainText() = runTest {
+        val store = FakeDataStore()
+        val repo = SettingsRepository(store, FakeCipher)
+        repo.setGeminiApiKey("secret-key")
+
+        val stored = store.data.first().asMap().values.map { it.toString() }
+        assertTrue(stored.none { "secret-key" in it })
+        assertEquals("secret-key", repo.settings.first().geminiApiKey)
+
+        repo.setGeminiApiKey("  ")
+        assertTrue(store.data.first().asMap().isEmpty())
+        assertFalse(repo.settings.first().isGeminiConfigured)
+    }
+
+    @Test
+    fun undecryptableApiKey_readsAsNotConfigured() = runTest {
+        val store = FakeDataStore()
+        store.updateData { p ->
+            p.toMutablePreferences().apply {
+                this[stringPreferencesKey("gemini_api_key_encrypted")] = "restored-from-another-device"
+            }
+        }
+        assertFalse(SettingsRepository(store, FakeCipher).settings.first().isGeminiConfigured)
+    }
+
+    @Test
+    fun migration_encryptsLegacyPlainTextKey() = runTest {
+        val migration = EncryptGeminiApiKeyMigration(FakeCipher)
+        assertFalse(migration.shouldMigrate(emptyPreferences()))
+
+        val store = FakeDataStore()
+        store.updateData { p ->
+            p.toMutablePreferences().apply {
+                this[stringPreferencesKey("gemini_api_key")] = " legacy-key "
+                this[stringPreferencesKey("gemini_model")] = "gemini-2.5-pro"
+            }
+        }
+        assertTrue(migration.shouldMigrate(store.data.first()))
+        store.updateData { migration.migrate(it) }
+
+        val migrated = store.data.first()
+        assertFalse(migration.shouldMigrate(migrated))
+        assertTrue(migrated.asMap().values.none { "legacy-key" in it.toString() })
+        val s = SettingsRepository(store, FakeCipher).settings.first()
+        assertEquals("legacy-key", s.geminiApiKey)
+        assertEquals("gemini-2.5-pro", s.geminiModel)
     }
 }
