@@ -6,6 +6,8 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.preferencesDataStore
+import com.jpcottin.lenslate.data.settings.EncryptGeminiApiKeyMigration
+import com.jpcottin.lenslate.data.settings.KeystoreSecretCipher
 import com.jpcottin.lenslate.data.settings.Settings
 import com.jpcottin.lenslate.data.settings.SettingsRepository
 import com.jpcottin.lenslate.data.speech.AndroidSpeechSource
@@ -34,10 +36,13 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+private val secretCipher = KeystoreSecretCipher()
+
 private val Context.settingsDataStore: DataStore<Preferences> by preferencesDataStore(
     name = "settings",
     // A corrupted file is replaced with defaults instead of crash-looping the app at startup.
     corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() },
+    produceMigrations = { listOf(EncryptGeminiApiKeyMigration(secretCipher)) },
 )
 
 @OptIn(ExperimentalProjectedApi::class)
@@ -45,7 +50,7 @@ private val Context.settingsDataStore: DataStore<Preferences> by preferencesData
 class AppContainer(private val appContext: Context) {
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
-    val settingsRepository = SettingsRepository(appContext.settingsDataStore)
+    val settingsRepository = SettingsRepository(appContext.settingsDataStore, secretCipher)
 
     /** Hot snapshot of the settings so engines can read them synchronously. */
     val settings: StateFlow<Settings> =

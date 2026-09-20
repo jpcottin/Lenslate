@@ -1,19 +1,10 @@
-<?xml version="1.0" encoding="utf-8"?><!--
-   Sample data extraction rules file; uncomment and customize as necessary.
-   See https://developer.android.com/about/versions/12/backup-restore#xml-changes
-   for details.
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+   Settings are backed up and transferred so the language pair and options follow the user. The
+   Gemini API key in that file is encrypted with a Keystore key that never leaves the device
+   (see KeystoreSecretCipher): a restored copy cannot be read and the key is asked for again.
 -->
 <data-extraction-rules>
-    <cloud-backup>
-        <!-- TODO: Use <include> and <exclude> to control what is backed up.
-        <include .../>
-        <exclude .../>
-        -->
-    </cloud-backup>
-    <!--
-    <device-transfer>
-        <include .../>
-        <exclude .../>
-    </device-transfer>
-    -->
+    <cloud-backup />
+    <device-transfer />
 </data-extraction-rules>

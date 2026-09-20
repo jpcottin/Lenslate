@@ -32,6 +32,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -178,10 +179,18 @@ private fun GeminiFields(
     onGeminiModelChange: (String) -> Unit,
 ) {
     var showKey by rememberSaveable { mutableStateOf(false) }
+    // The fields own their text: echoing the persisted value back (an asynchronous, and for the
+    // key encrypted, round trip) drops characters when typing fast. The key stays out of the
+    // saved instance state on purpose.
+    var apiKey by remember { mutableStateOf(settings.geminiApiKey) }
+    var model by rememberSaveable { mutableStateOf(settings.geminiModel) }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(start = 36.dp)) {
         OutlinedTextField(
-            value = settings.geminiApiKey,
-            onValueChange = onGeminiApiKeyChange,
+            value = apiKey,
+            onValueChange = {
+                apiKey = it
+                onGeminiApiKeyChange(it)
+            },
             label = { Text(stringResource(R.string.settings_gemini_api_key)) },
             supportingText = {
                 Text(
@@ -202,8 +211,11 @@ private fun GeminiFields(
             modifier = Modifier.fillMaxWidth(),
         )
         OutlinedTextField(
-            value = settings.geminiModel,
-            onValueChange = onGeminiModelChange,
+            value = model,
+            onValueChange = {
+                model = it
+                onGeminiModelChange(it)
+            },
             label = { Text(stringResource(R.string.settings_gemini_model)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
