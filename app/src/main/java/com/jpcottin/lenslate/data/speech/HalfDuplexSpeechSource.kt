@@ -3,6 +3,7 @@ package com.jpcottin.lenslate.data.speech
 import com.jpcottin.lenslate.domain.Language
 import com.jpcottin.lenslate.domain.SpeechEvent
 import com.jpcottin.lenslate.domain.SpeechSource
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.channelFlow
@@ -21,9 +22,12 @@ class HalfDuplexSpeechSource(
     private val delegate: SpeechSource,
     private val muted: StateFlow<Boolean>,
 ) : SpeechSource {
+    @OptIn(DelicateCoroutinesApi::class) // isClosedForSend, see below
     override fun listen(language: Language): Flow<SpeechEvent> = channelFlow {
         muted.collectLatest { isMuted ->
-            // Once closed (the delegate ended the stream), later mute flips must not send.
+            // Once closed (the delegate ended the stream), later mute flips must not send. Only
+            // this block closes the channel and collectLatest never runs two blocks at once, so
+            // the check cannot race with a close.
             if (isClosedForSend) return@collectLatest
             if (isMuted) {
                 // The recognizer was cancelled mid-sentence; drop its stale interim hypothesis.

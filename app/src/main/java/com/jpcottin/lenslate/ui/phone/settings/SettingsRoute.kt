@@ -1,6 +1,6 @@
 package com.jpcottin.lenslate.ui.phone.settings
 
-import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -23,7 +23,7 @@ fun SettingsRoute(
         // Side by side with Home there is nothing to go "back" from. Uses the same pane
         // directive as the navigation scene, so the arrow disappears exactly when (and only
         // when) the supporting pane actually shows Home next to Settings.
-        showBack = calculatePaneScaffoldDirective(currentWindowAdaptiveInfo()).maxHorizontalPartitions <= 1,
+        showBack = calculatePaneScaffoldDirective(currentWindowAdaptiveInfoV2()).maxHorizontalPartitions <= 1,
         onBack = onBack,
         onEngineChange = viewModel::setEngine,
         onGeminiApiKeyChange = viewModel::setGeminiApiKey,
