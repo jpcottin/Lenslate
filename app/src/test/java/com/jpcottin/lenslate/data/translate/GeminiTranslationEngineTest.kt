@@ -7,6 +7,7 @@ import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Before
@@ -15,7 +16,7 @@ import org.junit.Test
 class GeminiTranslationEngineTest {
     private lateinit var server: MockWebServer
     private var apiKey = "test-key"
-    private var model = "gemini-2.5-flash"
+    private var model = "gemini-3.5-flash-lite"
 
     private fun engine() = GeminiTranslationEngine(
         apiKey = { apiKey },
@@ -46,11 +47,14 @@ class GeminiTranslationEngineTest {
         assertEquals("Hello everyone", result)
         val request = server.takeRequest()
         assertEquals("POST", request.method)
-        assertEquals("/v1beta/models/gemini-2.5-flash:generateContent", request.url.encodedPath)
+        assertEquals("/v1beta/models/gemini-3.5-flash-lite:generateContent", request.url.encodedPath)
         assertEquals("test-key", request.headers["x-goog-api-key"])
         val body = request.body!!.utf8()
         assertTrue(body.contains("Translate the following French text into English"))
         assertTrue(body.contains("Bonjour tout le monde"))
+        // Sampling parameters are deprecated on Gemini 3 models.
+        assertFalse(body.contains("generationConfig"))
+        assertFalse(body.contains("temperature"))
     }
 
     @Test
@@ -104,6 +108,6 @@ class GeminiTranslationEngineTest {
         model = ""
         server.enqueue(MockResponse(body = """{"candidates":[{"content":{"parts":[{"text":"Hi"}]}}]}"""))
         engine().translate("Salut", Language.FRENCH, Language.ENGLISH)
-        assertTrue(server.takeRequest().url.encodedPath.contains("models/gemini-2.5-flash:"))
+        assertTrue(server.takeRequest().url.encodedPath.contains("models/gemini-3.5-flash-lite:"))
     }
 }

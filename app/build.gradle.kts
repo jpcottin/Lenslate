@@ -25,7 +25,9 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField("String", "GEMINI_DEFAULT_MODEL", "\"gemini-2.5-flash\"")
+        // Flash-Lite answers with minimal thinking by default: the lowest latency for one-sentence
+        // translations without any model-specific request parameter.
+        buildConfigField("String", "GEMINI_DEFAULT_MODEL", "\"gemini-3.5-flash-lite\"")
         buildConfigField(
             "String",
             "GEMINI_API_BASE_URL",

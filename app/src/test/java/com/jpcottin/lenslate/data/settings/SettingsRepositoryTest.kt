@@ -38,7 +38,7 @@ class SettingsRepositoryTest {
         assertEquals(Language.FRENCH, s.from)
         assertEquals(Language.ENGLISH, s.to)
         assertEquals(EngineKind.ON_DEVICE, s.engine)
-        assertEquals("gemini-2.5-flash", s.geminiModel)
+        assertEquals("gemini-3.5-flash-lite", s.geminiModel)
         assertFalse(s.speakTranslations)
         assertFalse(s.conversationMode)
         assertTrue(s.showSourceOnGlasses)
@@ -51,7 +51,7 @@ class SettingsRepositoryTest {
         repo.setLanguages(Language.JAPANESE, Language.GERMAN)
         repo.setEngine(EngineKind.GEMINI)
         repo.setGeminiApiKey("  key  ")
-        repo.setGeminiModel("gemini-2.5-pro")
+        repo.setGeminiModel("gemini-3.8-flash")
         repo.setSpeakTranslations(true)
         repo.setConversationMode(true)
         repo.setShowSourceOnGlasses(false)
@@ -62,7 +62,7 @@ class SettingsRepositoryTest {
         assertEquals(EngineKind.GEMINI, s.engine)
         assertEquals("key", s.geminiApiKey)
         assertTrue(s.isGeminiConfigured)
-        assertEquals("gemini-2.5-pro", s.geminiModel)
+        assertEquals("gemini-3.8-flash", s.geminiModel)
         assertTrue(s.speakTranslations)
         assertTrue(s.conversationMode)
         assertFalse(s.showSourceOnGlasses)
@@ -81,7 +81,7 @@ class SettingsRepositoryTest {
         val s = SettingsRepository(store, FakeCipher).settings.first()
         assertEquals(Language.FRENCH, s.from)
         assertEquals(EngineKind.ON_DEVICE, s.engine)
-        assertEquals("gemini-2.5-flash", s.geminiModel)
+        assertEquals("gemini-3.5-flash-lite", s.geminiModel)
     }
 
     @Test
@@ -119,7 +119,7 @@ class SettingsRepositoryTest {
         store.updateData { p ->
             p.toMutablePreferences().apply {
                 this[stringPreferencesKey("gemini_api_key")] = " legacy-key "
-                this[stringPreferencesKey("gemini_model")] = "gemini-2.5-pro"
+                this[stringPreferencesKey("gemini_model")] = "gemini-3.8-flash"
             }
         }
         assertTrue(migration.shouldMigrate(store.data.first()))
@@ -130,6 +130,6 @@ class SettingsRepositoryTest {
         assertTrue(migrated.asMap().values.none { "legacy-key" in it.toString() })
         val s = SettingsRepository(store, FakeCipher).settings.first()
         assertEquals("legacy-key", s.geminiApiKey)
-        assertEquals("gemini-2.5-pro", s.geminiModel)
+        assertEquals("gemini-3.8-flash", s.geminiModel)
     }
 }
