@@ -59,7 +59,7 @@ the glasses' microphone); the phone's *Listen* button uses the phone's.
 | Engine | Where | Notes |
 |---|---|---|
 | **On-device** (default) | ML Kit Translation | Private and offline. ~30 MB per language, downloaded on first use or from *Settings ▸ Offline translation models*. Interim (partial) sentences are translated live. |
-| **Gemini** (optional) | Gemini API | Better fluency. Enable it in *Settings*, paste your own API key (from [AI Studio](https://aistudio.google.com)), optionally change the model (default `gemini-2.5-flash`). Only final sentences are sent. |
+| **Gemini** (optional) | Gemini API | Better fluency. Enable it in *Settings*, paste your own API key (from [AI Studio](https://aistudio.google.com)), optionally change the model (default `gemini-3.5-flash-lite`, the fastest; `gemini-3.8-flash` trades latency for quality). Only final sentences are sent. |
 
 ### AppFunction
 

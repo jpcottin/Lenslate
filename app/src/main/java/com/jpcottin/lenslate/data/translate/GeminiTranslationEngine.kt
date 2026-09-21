@@ -45,9 +45,10 @@ class GeminiTranslationEngine(
             throw TranslationException("Invalid Gemini model name: \"$modelName\"")
         }
 
+        // No generationConfig on purpose: Gemini 3 deprecates the sampling parameters
+        // (temperature…), and thinking levels differ per model while the model name is free text.
         val body = GenerateContentRequest(
             contents = listOf(Content(parts = listOf(Part(prompt(text, from, to))))),
-            generationConfig = GenerationConfig(temperature = 0.2),
         )
         val request = Request.Builder()
             .url("${baseUrl}models/$modelName:generateContent")
@@ -112,19 +113,13 @@ class GeminiTranslationEngine(
     }
 
     @Serializable
-    internal data class GenerateContentRequest(
-        val contents: List<Content>,
-        val generationConfig: GenerationConfig? = null,
-    )
+    internal data class GenerateContentRequest(val contents: List<Content>)
 
     @Serializable
     internal data class Content(val parts: List<Part>, val role: String? = null)
 
     @Serializable
     internal data class Part(val text: String? = null)
-
-    @Serializable
-    internal data class GenerationConfig(val temperature: Double? = null)
 
     @Serializable
     internal data class GenerateContentResponse(
