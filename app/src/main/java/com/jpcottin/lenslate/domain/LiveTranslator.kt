@@ -1,6 +1,7 @@
 package com.jpcottin.lenslate.domain
 
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -95,37 +96,42 @@ class LiveTranslator(
         val to = state.value.to
         _state.update { it.copy(isListening = true, error = null) }
         prepareJob?.cancel()
-        prepareJob = scope.launch {
+        // Both jobs are created lazily and started only once they are stored and observed: on an
+        // immediate dispatcher a job that never suspends finishes inside start(), and its
+        // completion handler has to find itself in the field to reset the state.
+        val prepare = scope.launch(start = CoroutineStart.LAZY) {
             _state.update { it.copy(isPreparing = true) }
             runCatching { engine().prepare(from, to) }
                 .onFailure { e ->
                     if (e is kotlinx.coroutines.CancellationException) throw e
                     _state.update { it.copy(error = e.message ?: "Could not prepare the translation engine") }
                 }
-        }.also { job ->
-            job.invokeOnCompletion {
-                // A replaced prepare must not clear the flag its successor just set.
-                if (prepareJob === job) {
-                    prepareJob = null
-                    _state.update { it.copy(isPreparing = false) }
-                }
+        }
+        prepareJob = prepare
+        prepare.invokeOnCompletion {
+            // A replaced prepare must not clear the flag its successor just set.
+            if (prepareJob === prepare) {
+                prepareJob = null
+                _state.update { it.copy(isPreparing = false) }
             }
         }
-        listenJob = scope.launch {
+        val listen = scope.launch(start = CoroutineStart.LAZY) {
             source.listen(from)
                 .catch { e -> _state.update { it.copy(error = e.message ?: "Speech recognition failed") } }
                 .collect { event -> handle(event) }
-        }.also { job ->
-            job.invokeOnCompletion {
-                // A replaced job completes asynchronously, after its successor has started:
-                // only the job that is still current may flip the state back to idle.
-                if (listenJob === job) {
-                    listenJob = null
-                    currentSource = null
-                    _state.update { it.copy(isListening = false, partialSource = "", partialTranslation = "") }
-                }
+        }
+        listenJob = listen
+        listen.invokeOnCompletion {
+            // A replaced job completes asynchronously, after its successor has started:
+            // only the job that is still current may flip the state back to idle.
+            if (listenJob === listen) {
+                listenJob = null
+                currentSource = null
+                _state.update { it.copy(isListening = false, partialSource = "", partialTranslation = "") }
             }
         }
+        prepare.start()
+        listen.start()
     }
 
     fun stop() {

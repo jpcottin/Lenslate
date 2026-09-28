@@ -1,9 +1,11 @@
 package com.jpcottin.lenslate.domain
 
 import app.cash.turbine.test
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -239,6 +241,47 @@ class LiveTranslatorTest {
 
         assertFalse(translator.state.value.isListening)
         assertEquals("Microphone permission is missing", translator.state.value.error)
+    }
+
+    /**
+     * The app scope runs on Dispatchers.Main.immediate, where a launched coroutine executes in
+     * place: a job that never suspends is already complete when `launch` returns. The unconfined
+     * test dispatcher reproduces that eager start.
+     */
+    private fun TestScope.eagerTranslator(engine: TranslationEngine = FakeTranslationEngine()) = LiveTranslator(
+        engine = { engine },
+        scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler)),
+        partialTranslationDelayMs = 100,
+        maxUtterances = 3,
+    )
+
+    @Test
+    fun prepareThatCompletesInPlace_clearsPreparing() = runTest {
+        val engine = FakeTranslationEngine()
+        val translator = eagerTranslator(engine)
+
+        translator.start(FakeSpeechSource())
+
+        assertEquals(1, engine.prepareCalls)
+        assertFalse(translator.state.value.isPreparing)
+        assertTrue(translator.state.value.isListening)
+        translator.stop()
+    }
+
+    @Test
+    fun sourceThatCompletesInPlace_flipsListeningOff() = runTest {
+        val source = FakeSpeechSource().apply { complete() }
+        val translator = eagerTranslator()
+
+        translator.start(source)
+
+        assertEquals(1, source.listenCalls)
+        assertFalse(translator.state.value.isListening)
+
+        // The finished session must not be mistaken for an active one and restarted.
+        translator.setLanguages(Language.SPANISH, Language.GERMAN)
+        assertEquals(1, source.listenCalls)
+        assertFalse(translator.state.value.isListening)
     }
 
     @Test
