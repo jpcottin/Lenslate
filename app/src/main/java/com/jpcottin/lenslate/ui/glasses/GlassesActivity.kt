@@ -28,7 +28,6 @@ import androidx.xr.projected.ProjectedDisplayController
 import androidx.xr.projected.experimental.ExperimentalProjectedApi
 import com.jpcottin.lenslate.appContainer
 import com.jpcottin.lenslate.data.camera.CameraXFrameCapture
-import com.jpcottin.lenslate.domain.SpeechSource
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -58,11 +57,14 @@ class GlassesActivity : ComponentActivity() {
     private var displayController: ProjectedDisplayController? = null
     private var isVisualUiSupported by mutableStateOf(true)
     private var areVisualsOn by mutableStateOf(true)
-    private var permissionDenied by mutableStateOf(false)
     private var cameraPermissionDenied by mutableStateOf(false)
 
-    /** Microphone to listen with, resolved once permissions are sorted out. */
-    private var speechSource: SpeechSource? = null
+    private val microphone by lazy {
+        GlassesMicrophone(appContainer.liveTranslator, lifecycleScope) { mayAsk ->
+            resolveHardwareContext(Manifest.permission.RECORD_AUDIO, MIC_PERMISSION_REQUEST, mayAsk)
+                ?.let { appContainer.speechSource(it) }
+        }
+    }
 
     /** Pending glasses-side permission requests, completed from [onRequestPermissionsResult]. */
     private val pendingRequests = mutableMapOf<Int, CompletableDeferred<Boolean>>()
@@ -98,17 +100,16 @@ class GlassesActivity : ComponentActivity() {
             GlimmerTheme(typography = createGoogleSansFlexTypography()) {
                 val live by container.liveTranslator.state.collectAsStateWithLifecycle()
                 val settings by container.settings.collectAsStateWithLifecycle()
+                val permissionDenied by microphone.permissionDenied.collectAsStateWithLifecycle()
                 GlassesScreen(
                     live = live,
                     showSource = settings.showSourceOnGlasses,
                     isVisualUiSupported = isVisualUiSupported,
                     permissionDenied = permissionDenied,
                     cameraPermissionDenied = cameraPermissionDenied,
-                    onToggleListening = {
-                        if (live.isListening) container.liveTranslator.stop() else resolveMicrophoneAndListen()
-                    },
+                    onToggleListening = { microphone.toggle() },
                     onRead = { readText() },
-                    onRetryPermission = { resolveMicrophoneAndListen(forceRequest = true) },
+                    onRetryPermission = { microphone.retry() },
                     onExit = { finish() },
                 )
             }
@@ -119,12 +120,12 @@ class GlassesActivity : ComponentActivity() {
         super.onStart()
         // Route text-to-speech through the glasses while this activity is in front.
         appContainer.speaker.attach(this)
-        resolveMicrophoneAndListen()
+        microphone.onStart()
     }
 
     override fun onStop() {
         super.onStop()
-        appContainer.liveTranslator.stop()
+        microphone.onStop()
         appContainer.speaker.detach()
     }
 
@@ -146,32 +147,6 @@ class GlassesActivity : ComponentActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         val granted = permissions.indices.all { grantResults.getOrNull(it) == PackageManager.PERMISSION_GRANTED }
         pendingRequests.remove(requestCode)?.complete(granted && permissions.isNotEmpty())
-    }
-
-    // ---- Listen ------------------------------------------------------------------------------
-
-    private fun startListening() {
-        val container = appContainer
-        val source = speechSource ?: return
-        if (container.liveTranslator.state.value.isListening) return
-        container.liveTranslator.start(source)
-    }
-
-    private fun resolveMicrophoneAndListen(forceRequest: Boolean = false) {
-        if (speechSource != null && !forceRequest) {
-            startListening()
-            return
-        }
-        lifecycleScope.launch {
-            val micContext = resolveHardwareContext(Manifest.permission.RECORD_AUDIO, MIC_PERMISSION_REQUEST)
-            if (micContext == null) {
-                permissionDenied = true
-                return@launch
-            }
-            permissionDenied = false
-            speechSource = appContainer.speechSource(micContext)
-            startListening()
-        }
     }
 
     // ---- Read --------------------------------------------------------------------------------
@@ -200,13 +175,12 @@ class GlassesActivity : ComponentActivity() {
 
     /**
      * Returns the context whose hardware may be used for [permission]: the glasses (this activity)
-     * when granted there — asking through the projected permission flow if needed — otherwise the
-     * phone when granted there, or null when neither is available.
+     * when granted there — asking through the projected permission flow if needed and [mayAsk] —
+     * otherwise the phone when granted there, or null when neither is available.
      */
-    private suspend fun resolveHardwareContext(permission: String, requestCode: Int): Context? {
+    private suspend fun resolveHardwareContext(permission: String, requestCode: Int, mayAsk: Boolean = true): Context? {
         if (hasPermission(this, permission)) return this
-        val grantedOnGlasses = requestGlassesPermission(permission, requestCode)
-        if (grantedOnGlasses) return this
+        if (mayAsk && requestGlassesPermission(permission, requestCode)) return this
         val host = runCatching { ProjectedContext.createHostDeviceContext(this) }.getOrNull()
         return host?.takeIf { hasPermission(it, permission) }
     }

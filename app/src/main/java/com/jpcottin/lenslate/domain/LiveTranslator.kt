@@ -145,6 +145,9 @@ class LiveTranslator(
         _state.update { it.copy(isListening = false, partialSource = "", partialTranslation = "") }
     }
 
+    /** Whether the active session is the one started on [source], rather than another surface's. */
+    fun isListeningOn(source: SpeechSource): Boolean = currentSource === source
+
     fun clear() {
         _state.update { it.copy(utterances = emptyList(), partialSource = "", partialTranslation = "", error = null) }
     }
