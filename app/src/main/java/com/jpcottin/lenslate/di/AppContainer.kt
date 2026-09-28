@@ -101,11 +101,9 @@ class AppContainer(private val appContext: Context) {
         isSpeaking = speaker.isSpeaking,
         speakEnabled = { settings.value.speakTranslations },
         conversationMode = { settings.value.conversationMode },
-        speak = { translation -> speaker.speak(translation, settings.value.to) },
-        swapLanguages = {
-            val s = settings.value
-            settingsRepository.setLanguages(s.to, s.from)
-        },
+        direction = { settings.value.let { it.from to it.to } },
+        speak = speaker::speak,
+        setDirection = settingsRepository::setLanguages,
     )
 
     init {

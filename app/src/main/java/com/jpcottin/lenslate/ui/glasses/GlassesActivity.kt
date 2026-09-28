@@ -90,7 +90,7 @@ class GlassesActivity : ComponentActivity() {
                 container.liveTranslator.translated.collect { utterance ->
                     val settings = container.settings.value
                     if (!settings.speakTranslations && (!areVisualsOn || !isVisualUiSupported)) {
-                        container.speaker.speak(utterance.translation.orEmpty(), settings.to)
+                        container.speaker.speak(utterance.translation.orEmpty(), utterance.to)
                     }
                 }
             }

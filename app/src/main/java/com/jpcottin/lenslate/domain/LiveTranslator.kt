@@ -30,6 +30,9 @@ data class Utterance(
     val translation: String? = null,
     val error: String? = null,
     val kind: UtteranceKind = UtteranceKind.SPOKEN,
+    /** The direction it was heard and translated in; the current one may have changed since. */
+    val from: Language = Language.DEFAULT_SOURCE,
+    val to: Language = Language.DEFAULT_TARGET,
 )
 
 data class LiveTranslationState(
@@ -210,31 +213,28 @@ class LiveTranslator(
     private fun addUtterance(rawText: String, kind: UtteranceKind) {
         val text = rawText.trim()
         if (text.isEmpty()) return
-        val id = nextId++
-        _state.update { s ->
-            s.copy(utterances = (s.utterances + Utterance(id, text, kind = kind)).takeLast(maxUtterances))
-        }
-        translateUtterance(id, text)
+        val direction = state.value
+        val utterance = Utterance(nextId++, text, kind = kind, from = direction.from, to = direction.to)
+        _state.update { s -> s.copy(utterances = (s.utterances + utterance).takeLast(maxUtterances)) }
+        translateUtterance(utterance)
     }
 
-    private fun translateUtterance(id: Long, text: String) {
+    private fun translateUtterance(utterance: Utterance) {
         scope.launch {
-            val s = state.value
-            val result = runCatching { engine().translate(text, s.from, s.to) }
+            val result = runCatching { engine().translate(utterance.source, utterance.from, utterance.to) }
             val translation = result.getOrNull()
             val error = result.exceptionOrNull()?.message
             _state.update { st ->
                 st.copy(
                     utterances = st.utterances.map { u ->
-                        if (u.id == id) u.copy(translation = translation, error = error) else u
+                        if (u.id == utterance.id) u.copy(translation = translation, error = error) else u
                     },
                     // A successful translation clears the banner; a failure sets it.
                     error = error ?: if (translation != null) null else st.error,
                 )
             }
-            if (translation != null) {
-                _translated.tryEmit(state.value.utterances.firstOrNull { it.id == id } ?: Utterance(id, text, translation))
-            }
+            // Emitted from the utterance itself: its row may have left the transcript meanwhile.
+            if (translation != null) _translated.tryEmit(utterance.copy(translation = translation))
         }
     }
 

@@ -17,22 +17,29 @@ import kotlinx.coroutines.launch
  * reopens, never while the reply is still being spoken. With speech output off the swap is
  * immediate. Read-mode utterances never swap: photographing a sign mid-conversation must not
  * turn the direction around.
+ *
+ * Every utterance is spoken in the language it was translated into and turns around the
+ * direction it was heard in. A sentence whose translation arrives after the direction has
+ * already turned — the second of two said in a row — belongs to a turn that has ended: it is
+ * still spoken, in its own language, but must not turn the direction back.
  */
 class ConversationDirector(
     private val translated: Flow<Utterance>,
     private val isSpeaking: StateFlow<Boolean>,
     private val speakEnabled: () -> Boolean,
     private val conversationMode: () -> Boolean,
-    private val speak: (translation: String) -> Unit,
-    private val swapLanguages: suspend () -> Unit,
+    private val direction: () -> Pair<Language, Language>,
+    private val speak: (translation: String, language: Language) -> Unit,
+    private val setDirection: suspend (from: Language, to: Language) -> Unit,
 ) {
     fun start(scope: CoroutineScope): Job = scope.launch {
         translated.collect { utterance ->
-            if (speakEnabled()) speak(utterance.translation.orEmpty())
+            if (speakEnabled()) speak(utterance.translation.orEmpty(), utterance.to)
             if (utterance.kind != UtteranceKind.SPOKEN || !conversationMode()) return@collect
             isSpeaking.first { !it }
             // Re-check: the user may have turned conversation mode off during playback.
-            if (conversationMode()) swapLanguages()
+            if (!conversationMode()) return@collect
+            if (direction() == (utterance.from to utterance.to)) setDirection(utterance.to, utterance.from)
         }
     }
 }
