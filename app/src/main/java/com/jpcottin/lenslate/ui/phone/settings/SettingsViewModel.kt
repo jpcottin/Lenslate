@@ -23,6 +23,6 @@ class SettingsViewModel(private val container: AppContainer) : ViewModel() {
     fun setGeminiModel(model: String) = viewModelScope.launch { container.settingsRepository.setGeminiModel(model) }
     fun setSpeakTranslations(enabled: Boolean) = viewModelScope.launch { container.settingsRepository.setSpeakTranslations(enabled) }
     fun setShowSourceOnGlasses(enabled: Boolean) = viewModelScope.launch { container.settingsRepository.setShowSourceOnGlasses(enabled) }
-    fun downloadModel(language: Language) = viewModelScope.launch { container.modelRepository.download(language) }
+    fun downloadModel(language: Language) = container.modelRepository.download(language)
     fun deleteModel(language: Language) = viewModelScope.launch { container.modelRepository.delete(language) }
 }
