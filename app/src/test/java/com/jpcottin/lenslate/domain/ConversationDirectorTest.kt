@@ -18,6 +18,8 @@ class ConversationDirectorTest {
     private var speakEnabled = false
     private var conversationMode = false
     private val spoken = mutableListOf<String>()
+    private val voices = mutableListOf<Language>()
+    private var direction = Language.FRENCH to Language.ENGLISH
     private var swaps = 0
 
     /** [speak] raises [isSpeaking] like the real TranslationSpeaker does, synchronously. */
@@ -27,19 +29,38 @@ class ConversationDirectorTest {
             isSpeaking = isSpeaking,
             speakEnabled = { speakEnabled },
             conversationMode = { conversationMode },
-            speak = { text ->
+            direction = { direction },
+            speak = { text, language ->
                 spoken += text
+                voices += language
                 isSpeaking.value = true
             },
-            swapLanguages = { swaps++ },
+            setDirection = { from, to ->
+                direction = from to to
+                swaps++
+            },
         ).start(this)
         // A shared flow drops emissions that arrive before the collector has subscribed.
         advanceUntilIdle()
         return job
     }
 
-    private fun emit(translation: String = "Hello", kind: UtteranceKind = UtteranceKind.SPOKEN) {
-        translated.tryEmit(Utterance(id = 1, source = "Bonjour", translation = translation, kind = kind))
+    /** An utterance heard in the current direction, unless [heardIn] says otherwise. */
+    private fun emit(
+        translation: String = "Hello",
+        kind: UtteranceKind = UtteranceKind.SPOKEN,
+        heardIn: Pair<Language, Language> = direction,
+    ) {
+        translated.tryEmit(
+            Utterance(
+                id = 1,
+                source = "Bonjour",
+                translation = translation,
+                kind = kind,
+                from = heardIn.first,
+                to = heardIn.second,
+            ),
+        )
     }
 
     @Test
@@ -145,6 +166,61 @@ class ConversationDirectorTest {
 
         assertEquals(listOf("Hello", "Bonjour"), spoken)
         assertEquals(2, swaps)
+        job.cancel()
+    }
+
+    @Test
+    fun translationIsSpoken_inTheLanguageItWasTranslatedInto() = runTest {
+        speakEnabled = true
+        val job = startDirector()
+
+        // The direction has turned around since this sentence was heard.
+        direction = Language.ENGLISH to Language.FRENCH
+        emit("Hello", heardIn = Language.FRENCH to Language.ENGLISH)
+        advanceUntilIdle()
+
+        assertEquals(listOf(Language.ENGLISH), voices)
+        job.cancel()
+    }
+
+    @Test
+    fun secondSentenceOfATurn_doesNotTurnTheDirectionBack() = runTest {
+        speakEnabled = true
+        conversationMode = true
+        val job = startDirector()
+        val heardIn = Language.FRENCH to Language.ENGLISH
+
+        // Two sentences said in a row; the second translation arrives after the first swap.
+        emit("Hello", heardIn = heardIn)
+        advanceUntilIdle()
+        isSpeaking.value = false
+        advanceUntilIdle()
+        emit("How are you?", heardIn = heardIn)
+        advanceUntilIdle()
+        isSpeaking.value = false
+        advanceUntilIdle()
+
+        assertEquals(listOf("Hello", "How are you?"), spoken)
+        assertEquals(listOf(Language.ENGLISH, Language.ENGLISH), voices)
+        assertEquals(1, swaps)
+        assertEquals(Language.ENGLISH to Language.FRENCH, direction)
+        job.cancel()
+    }
+
+    @Test
+    fun swapIsDropped_whenTheUserChangedLanguagesDuringPlayback() = runTest {
+        speakEnabled = true
+        conversationMode = true
+        val job = startDirector()
+
+        emit("Hello")
+        advanceUntilIdle()
+        direction = Language.SPANISH to Language.GERMAN
+        isSpeaking.value = false
+        advanceUntilIdle()
+
+        assertEquals(0, swaps)
+        assertEquals(Language.SPANISH to Language.GERMAN, direction)
         job.cancel()
     }
 }

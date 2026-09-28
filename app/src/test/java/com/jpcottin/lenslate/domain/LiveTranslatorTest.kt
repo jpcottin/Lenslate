@@ -378,6 +378,41 @@ class LiveTranslatorTest {
         }
     }
 
+    @Test
+    fun readUtteranceClearedInFlight_isStillEmittedAsRead() = runTest {
+        val engine = FakeTranslationEngine(delayMs = 500)
+        val translator = translator(engine)
+        translator.translated.test {
+            translator.readText(FakeCapture(), FakeRecognizer("Sortie"))
+            advanceTimeBy(100)
+            translator.clear()
+            advanceUntilIdle()
+
+            val emitted = awaitItem()
+            assertEquals(UtteranceKind.READ, emitted.kind)
+            assertEquals("[fr→en] Sortie", emitted.translation)
+            assertTrue(translator.state.value.utterances.isEmpty())
+        }
+    }
+
+    @Test
+    fun utterance_keepsTheDirectionItWasHeardIn() = runTest {
+        val engine = FakeTranslationEngine(delayMs = 500)
+        val translator = translator(engine)
+        translator.translated.test {
+            translator.submit("Bonjour")
+            advanceTimeBy(100)
+            // The direction turns around while the translation is in flight.
+            translator.setLanguages(Language.ENGLISH, Language.FRENCH)
+            advanceUntilIdle()
+
+            val emitted = awaitItem()
+            assertEquals("[fr→en] Bonjour", emitted.translation)
+            assertEquals(Language.FRENCH, emitted.from)
+            assertEquals(Language.ENGLISH, emitted.to)
+        }
+    }
+
     private companion object {
         /** android.graphics.Bitmap is a stub on the JVM; allocate one without running the stub constructor. */
         fun fakeBitmap(): android.graphics.Bitmap {
