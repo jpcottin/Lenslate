@@ -5,10 +5,14 @@ import com.google.mlkit.common.model.RemoteModelManager
 import com.google.mlkit.nl.translate.TranslateRemoteModel
 import com.jpcottin.lenslate.domain.Language
 import com.jpcottin.lenslate.util.await
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 sealed interface ModelStatus {
     data object Downloaded : ModelStatus
@@ -42,8 +46,14 @@ class MlKitModelStore(
     private fun model(code: String) = TranslateRemoteModel.Builder(code).build()
 }
 
-/** Manages the offline translation models from the phone's settings screen. */
-class ModelRepository(private val store: TranslateModelStore = MlKitModelStore()) {
+/**
+ * Manages the offline translation models from the phone's settings screen. Downloads run in
+ * [scope], which outlives that screen.
+ */
+class ModelRepository(
+    private val scope: CoroutineScope,
+    private val store: TranslateModelStore = MlKitModelStore(),
+) {
     private val _statuses = MutableStateFlow<Map<Language, ModelStatus>>(
         Language.entries.associateWith { ModelStatus.NotDownloaded }
     )
@@ -67,12 +77,23 @@ class ModelRepository(private val store: TranslateModelStore = MlKitModelStore()
         }
     }
 
-    suspend fun download(language: Language) {
+    /**
+     * Starts downloading the model and returns at once. A model takes a while to arrive: leaving
+     * the settings screen must neither interrupt the download nor be reported as a failure.
+     */
+    fun download(language: Language): Job {
         _statuses.update { it + (language to ModelStatus.Downloading) }
-        runCatching { store.download(language.code) }
-            .onSuccess { _statuses.update { it + (language to ModelStatus.Downloaded) } }
-            .onFailure { e -> _statuses.update { it + (language to ModelStatus.Failed(e.message ?: "Download failed")) } }
-        refresh()
+        return scope.launch {
+            try {
+                store.download(language.code)
+                _statuses.update { it + (language to ModelStatus.Downloaded) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _statuses.update { it + (language to ModelStatus.Failed(e.message ?: "Download failed")) }
+            }
+            refresh()
+        }
     }
 
     suspend fun delete(language: Language) {

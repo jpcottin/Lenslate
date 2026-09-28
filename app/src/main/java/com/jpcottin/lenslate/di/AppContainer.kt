@@ -56,7 +56,7 @@ class AppContainer(private val appContext: Context) {
     val settings: StateFlow<Settings> =
         settingsRepository.settings.stateIn(appScope, SharingStarted.Eagerly, Settings())
 
-    val modelRepository = ModelRepository()
+    val modelRepository = ModelRepository(appScope)
 
     val onDeviceEngine = MlKitTranslationEngine()
 
