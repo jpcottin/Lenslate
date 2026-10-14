@@ -96,9 +96,11 @@ jobs:
           # minSdk is 36 (ProjectedContext.isProjectedDeviceConnected needs it).
           # google_apis images ship the on-device speech stack
           # (com.google.android.as) and ML Kit's Play Services dependencies.
+          # The gating leg renders with lavapipe (Mesa's CPU Vulkan driver), the
+          # same backend as the preview legs, rather than swiftshader_indirect.
           - api-level: '36'
             target: google_apis
-            gpu: swiftshader_indirect
+            gpu: lavapipe
           - api-level: '37.0'
             suffix: 'stable-lavapipe'
             target: google_apis_ps16k
@@ -186,7 +188,7 @@ jobs:
           path: |
             ~/.android/avd/*
             ~/.android/adb*
-          key: avd-api-${{ matrix.api-level }}-${{ matrix.target }}-tools${{ steps.cmdline-tools.outputs.version }}
+          key: avd-api-${{ matrix.api-level }}-${{ matrix.target }}-${{ matrix.gpu }}-tools${{ steps.cmdline-tools.outputs.version }}
 
       - name: Create AVD and generate snapshot for caching
         if: steps.avd-cache.outputs.cache-hit != 'true' && matrix.experimental != true
