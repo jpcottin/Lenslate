@@ -147,7 +147,7 @@ preview image or tool that moves underneath us reports its findings without bloc
 | **Screenshot Tests** | `validateDebugScreenshotTest` against the recorded references | yes | `screenshot-test-report` |
 | **Release Build (R8)** | The minified release APK | yes | — |
 | **Instrumented Tests (API 36)** | `connectedDebugAndroidTest` on a `google_apis` x86\_64 emulator with `-gpu lavapipe` | yes | `instrumented-test-results-api-36` |
-| **Instrumented Tests (API 37.x)** | The same tests on the API 37.0, 37.1 and 37.2 `google_apis_ps16k` images (16 KB page size): 37.0 from the stable channel on lavapipe and from the canary channel on auto, 37.1 and 37.2 from the canary channel on lavapipe | no | `instrumented-test-results-api-37.*-<suffix>` |
+| **Instrumented Tests (API 37.x)** | The same tests on the API 37.0, 37.1 and 37.2 `google_apis_ps16k` images (16 KB page size): 37.0 from the stable channel on lavapipe and from the canary channel on auto, 37.1 from the canary channel on lavapipe, 37.2 from the canary channel on lavapipe and auto | no | `instrumented-test-results-api-37.*-<suffix>` |
 | **Android CLI** | Installs the canary emulator and the API 37.0 ps16k image with the [`android` CLI](https://d.android.com/tools/agents/android-cli), creates and boots the AVD, runs the app, injects an utterance and OCRs a sign through the debug receiver and checks both translations with `android layout`, then smoke-launches the minified release APK | no | `android-cli-artifacts` |
 
 Every emulator-runner leg boots with full diagnostics (`-verbose -show-kernel -debug-metrics
