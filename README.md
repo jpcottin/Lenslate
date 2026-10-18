@@ -137,9 +137,27 @@ Emulator caveats observed with the current images:
 
 ### CI
 
-Unit, screenshot and R8 release jobs, an emulator matrix (API 36 blocking, API 37.x 16 KB
-page-size previews non-blocking), plus an Android CLI leg that installs the canary emulator,
-runs the app and verifies an injected utterance and an OCR'd sign with `android layout`.
+[`ci.yml`](.github/workflows/ci.yml) runs on every push and pull request to `main`. Four jobs
+gate merges; the API 37.x legs and the Android CLI leg are marked `continue-on-error`, so a
+preview image or tool that moves underneath us reports its findings without blocking a PR.
+
+| Job | What it does | Gates | Artifacts |
+|---|---|---|---|
+| **Unit Tests** | `testDebugUnitTest` and `lintDebug` | yes | `unit-test-results`, `lint-report` |
+| **Screenshot Tests** | `validateDebugScreenshotTest` against the recorded references | yes | `screenshot-test-report` |
+| **Release Build (R8)** | The minified release APK | yes | — |
+| **Instrumented Tests (API 36)** | `connectedDebugAndroidTest` on a `google_apis` x86\_64 emulator with `-gpu lavapipe` | yes | `instrumented-test-results-api-36` |
+| **Instrumented Tests (API 37.x)** | The same tests on the API 37.0, 37.1 and 37.2 `google_apis_ps16k` images (16 KB page size): 37.0 from the stable channel on lavapipe and from the canary channel on auto, 37.1 and 37.2 from the canary channel on lavapipe | no | `instrumented-test-results-api-37.*-<suffix>` |
+| **Android CLI** | Installs the canary emulator and the API 37.0 ps16k image with the [`android` CLI](https://d.android.com/tools/agents/android-cli), creates and boots the AVD, runs the app, injects an utterance and OCRs a sign through the debug receiver and checks both translations with `android layout`, then smoke-launches the minified release APK | no | `android-cli-artifacts` |
+
+Every emulator-runner leg boots with full diagnostics (`-verbose -show-kernel -debug-metrics
+-metrics-collection`) and refreshes `cmdline-tools` first so `avdmanager` writes a valid
+`target=android-37.x` for the minor-versioned images.
+
+Two more workflows: [`release.yml`](.github/workflows/release.yml) runs the unit tests, builds
+the release APK and attaches the unsigned APK to a GitHub release on a version tag, and
+[`dependency-review.yml`](.github/workflows/dependency-review.yml) flags newly introduced
+dependencies with known vulnerabilities or disallowed licences on pull requests.
 
 ## Roadmap
 
