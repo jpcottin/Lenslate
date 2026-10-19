@@ -239,10 +239,14 @@ jobs:
   # mode end to end by injecting an utterance through the debug receiver and
   # asserting the translation with `android layout`.
   android-cli:
-    name: Android CLI (API 37.0 canary emulator, utterance injection)
+    name: Android CLI (API ${{ matrix.api-level }} canary emulator, utterance injection)
     runs-on: ubuntu-latest
     timeout-minutes: 40
     continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        api-level: ['37.0', '37.2']
 
     steps:
       - uses: actions/checkout@v7
@@ -270,13 +274,13 @@ jobs:
           android --version
           android info
 
-      - name: Install canary emulator and API 37.0 ps16k image with the CLI
+      - name: Install canary emulator and API ${{ matrix.api-level }} ps16k image with the CLI
         run: |
-          android sdk install --canary emulator platform-tools system-images/android-37.0/google_apis_ps16k/x86_64
+          android sdk install --canary emulator platform-tools system-images/android-${{ matrix.api-level }}/google_apis_ps16k/x86_64
 
       # 'android emulator create' is profile-based with no way to pin an image, so
       # create the profile with the CLI and retarget it at the pinned image.
-      - name: Create AVD with the CLI and retarget it to API 37.0 ps16k
+      - name: Create AVD with the CLI and retarget it to API ${{ matrix.api-level }} ps16k
         run: |
           android emulator create medium_phone
           DEVICE="$(android emulator list | head -n1)"
@@ -286,8 +290,8 @@ jobs:
           set_ini() {
             if grep -q "^$1=" "$CFG"; then sed -i "s#^$1=.*#$1=$2#" "$CFG"; else echo "$1=$2" >> "$CFG"; fi
           }
-          sed -i 's/^target=.*/target=android-37.0/' "$HOME/.android/avd/$DEVICE.ini"
-          set_ini image.sysdir.1 'system-images/android-37.0/google_apis_ps16k/x86_64/'
+          sed -i 's/^target=.*/target=android-${{ matrix.api-level }}/' "$HOME/.android/avd/$DEVICE.ini"
+          set_ini image.sysdir.1 'system-images/android-${{ matrix.api-level }}/google_apis_ps16k/x86_64/'
           set_ini tag.id google_apis
           set_ini tag.display 'Google APIs'
           set_ini PlayStore.enabled false
@@ -376,7 +380,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: android-cli-artifacts
+          name: android-cli-artifacts-${{ matrix.api-level }}
           path: |
             lenslate-phone.png
             layout.json
