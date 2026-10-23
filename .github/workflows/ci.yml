@@ -265,9 +265,7 @@ jobs:
           sudo udevadm trigger --name-match=kvm
 
       - name: Install Android CLI
-        run: |
-          curl -fsSL https://dl.google.com/android/cli/latest/linux_x86_64/install.sh | bash
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+        run: sh .github/scripts/install-android-cli.sh
 
       - name: Android CLI diagnostics
         run: |
