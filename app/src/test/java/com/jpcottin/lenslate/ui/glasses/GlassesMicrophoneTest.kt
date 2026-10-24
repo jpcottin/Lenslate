@@ -112,6 +112,24 @@ class GlassesMicrophoneTest {
     }
 
     @Test
+    fun onStart_afterAPhoneFallback_picksUpAGlassesGrant() = runTest {
+        val translator = translator()
+        // Denied on the glasses the first time (the phone's microphone stands in), granted
+        // in the system settings before the next start.
+        val microphone = microphone(translator) { if (resolutions.size == 1) phoneMic else glassesMic }
+        microphone.onStart()
+        advanceUntilIdle()
+        assertTrue(translator.isListeningOn(phoneMic))
+
+        microphone.onStop()
+        microphone.onStart()
+        advanceUntilIdle()
+
+        assertTrue(translator.isListeningOn(glassesMic))
+        microphone.onStop()
+    }
+
+    @Test
     fun onStart_afterADenial_doesNotAskAgain() = runTest {
         granted = null
         val translator = translator()

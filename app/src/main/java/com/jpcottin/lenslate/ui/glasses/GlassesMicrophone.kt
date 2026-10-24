@@ -38,7 +38,11 @@ internal class GlassesMicrophone(
      */
     fun onStart() {
         inFront = true
-        listen(mayAsk = !permissionDenied.value)
+        // Resolve the source again on each start rather than keeping the first answer: a
+        // glasses permission granted since (in the system settings) would otherwise never
+        // replace the phone fallback until the process restarted. Asking is still gated by
+        // the remembered denial, so this cannot loop through the prompt.
+        listen(mayAsk = !permissionDenied.value, refresh = listened && source?.let { !translator.isListeningOn(it) } == true)
     }
 
     fun onStop() {
@@ -72,6 +76,11 @@ internal class GlassesMicrophone(
     }
 
     private fun start(own: SpeechSource) {
+        listened = true
         if (!translator.isListeningOn(own)) translator.start(own)
     }
+
+    /** Whether the resolved source has been listened on: a source resolved after a stop
+     *  (the prompt answered late) is used as is on the next start, not resolved again. */
+    private var listened = false
 }
