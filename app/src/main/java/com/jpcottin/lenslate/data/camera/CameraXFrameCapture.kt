@@ -44,16 +44,7 @@ class CameraXFrameCapture(
         val provider = ProcessCameraProvider.awaitInstance(context)
         val selector = CameraSelector.DEFAULT_BACK_CAMERA
         if (!provider.hasCamera(selector)) throw TextRecognitionException("No camera available")
-        val useCase = ImageCapture.Builder()
-            .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
-            .setResolutionSelector(
-                ResolutionSelector.Builder()
-                    .setResolutionStrategy(
-                        ResolutionStrategy(Size(1280, 720), ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER)
-                    )
-                    .build()
-            )
-            .build()
+        val useCase = imageCapture(Size(1280, 720))
         try {
             // Bind only this use case: unbindAll() would tear down use cases other surfaces
             // (like the phone Read screen's viewfinder) have bound on the shared provider.
@@ -64,19 +55,35 @@ class CameraXFrameCapture(
         }
     }
 
-    private suspend fun takePicture(useCase: ImageCapture): Frame = suspendCancellableCoroutine { cont ->
-        useCase.takePicture(
-            ContextCompat.getMainExecutor(context),
-            object : ImageCapture.OnImageCapturedCallback() {
-                override fun onCaptureSuccess(image: ImageProxy) {
-                    val frame = image.use { Frame(it.toBitmap(), it.imageInfo.rotationDegrees) }
-                    cont.resume(frame)
-                }
+    private suspend fun takePicture(useCase: ImageCapture): Frame {
+        val image = suspendCancellableCoroutine<ImageProxy> { cont ->
+            useCase.takePicture(
+                ContextCompat.getMainExecutor(context),
+                object : ImageCapture.OnImageCapturedCallback() {
+                    override fun onCaptureSuccess(image: ImageProxy) {
+                        if (cont.isActive) cont.resume(image) { _, _, _ -> image.close() } else image.close()
+                    }
 
-                override fun onError(exception: ImageCaptureException) {
-                    cont.resumeWithException(TextRecognitionException("Camera capture failed: ${exception.message}", exception))
-                }
-            },
-        )
+                    override fun onError(exception: ImageCaptureException) {
+                        cont.resumeWithException(TextRecognitionException("Camera capture failed: ${exception.message}", exception))
+                    }
+                },
+            )
+        }
+        // Decoding a photo into a bitmap is work for a background thread, not the main one.
+        return withContext(Dispatchers.Default) { image.use { Frame(it.toBitmap(), it.imageInfo.rotationDegrees) } }
     }
+
+    companion object {
+        /** Capture use case bounded for OCR: plenty for a sign, cheap to decode and to recognize. */
+        fun imageCapture(bound: Size = Size(1920, 1080)): ImageCapture = ImageCapture.Builder()
+            .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+            .setResolutionSelector(
+                ResolutionSelector.Builder()
+                    .setResolutionStrategy(ResolutionStrategy(bound, ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER))
+                    .build()
+            )
+            .build()
+    }
+
 }

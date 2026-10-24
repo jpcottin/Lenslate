@@ -2,6 +2,10 @@ package com.jpcottin.lenslate.ui.phone
 
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
@@ -181,4 +185,14 @@ class HomeScreenTest {
         composeTestRule.onNodeWithText("EXIT").assertIsDisplayed()
         composeTestRule.onAllNodesWithContentDescription("Read").assertCountEquals(2)
     }
+
+    @Test
+    fun latestTranslation_andErrorBanner_areLiveRegions() {
+        setContent(LiveTranslationState(utterances = listOf(Utterance(1, "Bonjour", "Hello"), Utterance(2, "Merci", "Thanks")), error = "Network error"))
+        val polite = SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite)
+        composeTestRule.onNodeWithText("Thanks").assert(polite)
+        composeTestRule.onNodeWithText("Hello").assert(polite.not())
+        composeTestRule.onNodeWithText("Network error").assert(polite)
+    }
+
 }

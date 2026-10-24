@@ -413,7 +413,7 @@ class LiveTranslatorTest {
         }
     }
 
-    private companion object {
+    companion object {
         /** android.graphics.Bitmap is a stub on the JVM; allocate one without running the stub constructor. */
         fun fakeBitmap(): android.graphics.Bitmap {
             val unsafeField = sun.misc.Unsafe::class.java.getDeclaredField("theUnsafe").apply { isAccessible = true }

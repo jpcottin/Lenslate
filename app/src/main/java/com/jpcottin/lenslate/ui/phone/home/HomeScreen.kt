@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
@@ -59,7 +60,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextAlign
@@ -341,7 +344,7 @@ private fun StatusBanner(
             else -> null
         }
         if (error != null) {
-            Text(error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            Text(error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
         }
     }
 }
@@ -376,8 +379,8 @@ private fun Transcript(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = PaddingValues(top = 4.dp, bottom = bottomPadding),
     ) {
-        items(live.utterances, key = { it.id }) { utterance ->
-            UtteranceItem(utterance, onCopy = { onCopyUtterance(utterance) })
+        itemsIndexed(live.utterances, key = { _, u -> u.id }) { index, utterance ->
+            UtteranceItem(utterance, onCopy = { onCopyUtterance(utterance) }, announce = index == live.utterances.lastIndex)
         }
         if (live.partialSource.isNotEmpty()) {
             item(key = "partial") {
@@ -392,7 +395,9 @@ private fun Transcript(
 }
 
 @Composable
-private fun UtteranceItem(utterance: Utterance, onCopy: () -> Unit, isPartial: Boolean = false) {
+private fun UtteranceItem(utterance: Utterance, onCopy: () -> Unit, isPartial: Boolean = false, announce: Boolean = false) {
+    // The newest finished translation is a polite live region: a screen reader hears it arrive.
+    val announceModifier = if (announce) Modifier.semantics { liveRegion = LiveRegionMode.Polite } else Modifier
     Card(
         Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -415,9 +420,9 @@ private fun UtteranceItem(utterance: Utterance, onCopy: () -> Unit, isPartial: B
                         modifier = Modifier.width(16.dp),
                     )
                     when {
-                        utterance.error != null -> Text(utterance.error, color = MaterialTheme.colorScheme.error)
-                        utterance.translation.isNullOrEmpty() -> Text("…", style = MaterialTheme.typography.titleMedium)
-                        else -> Text(utterance.translation, style = MaterialTheme.typography.titleMedium)
+                        utterance.error != null -> Text(utterance.error, color = MaterialTheme.colorScheme.error, modifier = announceModifier)
+                        utterance.translation.isNullOrEmpty() -> Text("…", style = MaterialTheme.typography.titleMedium, modifier = announceModifier)
+                        else -> Text(utterance.translation, style = MaterialTheme.typography.titleMedium, modifier = announceModifier)
                     }
                 }
             }

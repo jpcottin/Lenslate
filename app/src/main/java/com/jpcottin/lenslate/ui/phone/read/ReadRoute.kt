@@ -51,7 +51,7 @@ fun ReadRoute(
             return@LaunchedEffect
         }
         val preview = Preview.Builder().build().apply { setSurfaceProvider { request -> surfaceRequest = request } }
-        val imageCapture = ImageCapture.Builder().setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY).build()
+        val imageCapture = CameraXFrameCapture.imageCapture()   // bounded: the sensor's full size is no help to OCR and can exhaust memory
         val selector = CameraSelector.DEFAULT_BACK_CAMERA
         if (!provider.hasCamera(selector)) {
             cameraError = cameraUnavailable
