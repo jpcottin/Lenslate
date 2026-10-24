@@ -21,6 +21,8 @@ class ConversationDirectorTest {
     private val voices = mutableListOf<Language>()
     private var direction = Language.FRENCH to Language.ENGLISH
     private var swaps = 0
+    /** When set, the next [setDirection] throws it (once) instead of swapping. */
+    private var setDirectionFailure: Throwable? = null
 
     /** [speak] raises [isSpeaking] like the real TranslationSpeaker does, synchronously. */
     private fun TestScope.startDirector(): Job {
@@ -36,6 +38,7 @@ class ConversationDirectorTest {
                 isSpeaking.value = true
             },
             setDirection = { from, to ->
+                setDirectionFailure?.let { setDirectionFailure = null; throw it }
                 direction = from to to
                 swaps++
             },
@@ -61,6 +64,25 @@ class ConversationDirectorTest {
                 to = heardIn.second,
             ),
         )
+    }
+
+    @Test
+    fun aFailedSwap_doesNotEndTheDirector() = runTest {
+        speakEnabled = true
+        conversationMode = true
+        setDirectionFailure = java.io.IOException("disk full")
+        val job = startDirector()
+        emit("Hello")
+        advanceUntilIdle()
+        isSpeaking.value = false
+        advanceUntilIdle()
+        emit("Bonjour", heardIn = direction)
+        advanceUntilIdle()
+        isSpeaking.value = false
+        advanceUntilIdle()
+        assertEquals(listOf("Hello", "Bonjour"), spoken)
+        assertEquals(1, swaps)                 // the first swap failed, the second went through
+        job.cancel()
     }
 
     @Test
