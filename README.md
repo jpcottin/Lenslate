@@ -131,7 +131,7 @@ Emulator caveats observed with the current images:
 
 | Suite | Command | What it covers |
 |---|---|---|
-| Unit | `./gradlew :app:testDebugUnitTest` | 92 tests: the `LiveTranslator` pipeline (partials, debounce, errors, mic hand-over, Read mode with fake camera/OCR), the conversation director, the translation speaker's engine lifecycle, the glasses microphone, transcript formatting, the speech sources, the Gemini client against `MockWebServer`, settings mapping and its read-error fallback, the model repository, languages |
+| Unit | `./gradlew :app:testDebugUnitTest` | 96 tests: the `LiveTranslator` pipeline (partials, debounce, errors, mic hand-over, Read mode with fake camera/OCR), the conversation director (including a failed direction swap), the translation speaker's engine lifecycle, the glasses microphone (including a permission granted later), transcript formatting, the speech sources, the Gemini client against `MockWebServer`, settings mapping, its read-error fallback and a Keystore failure, the model repository, languages |
 | Screenshot | `./gradlew :app:validateDebugScreenshotTest` (`updateDebugScreenshotTest` to re-record) | 16 previews: phone screens on phone/foldable/tablet/desktop (home, settings, read), glasses card at the lens' 450×394 dp (listening, reading, read result, errors) |
 | Instrumented | `./gradlew :app:connectedDebugAndroidTest` | 42 tests: Compose UI tests for both surfaces, the AppFunction handler, ML Kit OCR on a rendered sign, the Keystore-backed secret cipher, the Application wiring, and end-to-end tests that inject a sentence / read a sign and check the on-device translation |
 
