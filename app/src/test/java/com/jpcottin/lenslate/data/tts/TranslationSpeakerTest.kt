@@ -172,6 +172,20 @@ class TranslationSpeakerTest {
     }
 
     @Test
+    fun attachingAnEngineThatIsReadyAtOnce_speaksTheQueueThroughIt() = runTest {
+        val speaker = speaker()
+        speaker.speak("Hello", Language.ENGLISH)      // waits for the phone engine, which never answers
+        initInPlace = true                            // the glasses engine is ready inside its creation
+
+        speaker.attach(glasses)
+
+        assertTrue(engines[0].isShutDown)
+        assertTrue(engines[0].spoken.isEmpty())        // not through the engine just shut down
+        assertEquals(listOf("Hello" to Language.ENGLISH), engines[1].spoken)
+        speaker.shutdown()
+    }
+
+    @Test
     fun attachingTheGlasses_endsWhatTheOldEngineWasSaying() = runTest {
         val speaker = speaker()
         speaker.attach(phone)

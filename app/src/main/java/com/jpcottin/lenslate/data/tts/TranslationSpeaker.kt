@@ -94,6 +94,9 @@ class TranslationSpeaker internal constructor(
 
     private fun recreate(context: Context) {
         engine?.shutdown()
+        // Null until the new engine is assigned: an engine that reports ready from inside its own
+        // creation must not have the queue spoken through the one just shut down.
+        engine = null
         this.context = context
         ready = false
         initFailed = false
@@ -114,6 +117,8 @@ class TranslationSpeaker internal constructor(
             // Progress callbacks arrive on a binder thread; hop to main where state lives.
             onFinished = { id -> scope.launch { utteranceFinished(id) } },
         )
+        // The engine answered before create() returned: the queue waited for this assignment.
+        if (ready) speakPending()
     }
 
     private fun initialized(token: Any, success: Boolean) {
@@ -128,6 +133,10 @@ class TranslationSpeaker internal constructor(
             return
         }
         ready = true
+        if (engine != null) speakPending()
+    }
+
+    private fun speakPending() {
         while (pending.isNotEmpty()) {
             val (text, language) = pending.removeFirst()
             speak(text, language)
