@@ -3,6 +3,7 @@ package com.jpcottin.lenslate.data.settings
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.emptyPreferences
+import androidx.datastore.preferences.core.preferencesOf
 import androidx.datastore.preferences.core.stringPreferencesKey
 import java.io.IOException
 import com.jpcottin.lenslate.domain.EngineKind
@@ -52,7 +53,30 @@ private object FakeCipher : SecretCipher {
     override fun decrypt(stored: String) = stored.takeIf { it.startsWith("enc:") }?.removePrefix("enc:")?.reversed()
 }
 
+/** A Keystore that throws something the cipher does not expect. */
+private object BrokenCipher : SecretCipher {
+    override fun encrypt(plain: String): String = throw IllegalStateException("keystore down")
+    override fun decrypt(stored: String): String? = throw IllegalStateException("keystore down")
+}
+
 class SettingsRepositoryTest {
+    @Test
+    fun aKeystoreFailureReadsAsNoKey_andTheFlowGoesOn() = runTest {
+        val store = FakeDataStore(preferencesOf(stringPreferencesKey("gemini_api_key_encrypted") to "enc:x"))
+        val repo = SettingsRepository(store, BrokenCipher)
+        assertFalse(repo.settings.first().isGeminiConfigured)      // not a crash
+        repo.setLanguages(Language.JAPANESE, Language.GERMAN)
+        assertEquals(Language.JAPANESE, repo.settings.first().from)  // the flow still works
+    }
+
+    @Test
+    fun aKeystoreThatCannotEncrypt_leavesTheStoredKeyAlone() = runTest {
+        val store = FakeDataStore(preferencesOf(stringPreferencesKey("gemini_api_key_encrypted") to "enc:x"))
+        val repo = SettingsRepository(store, BrokenCipher)
+        assertFalse(repo.setGeminiApiKey("new-key"))
+        assertEquals("enc:x", store.data.first()[stringPreferencesKey("gemini_api_key_encrypted")])
+    }
+
     @Test
     fun aReadErrorIsRetriedAndTheCollectorKeepsFollowingTheSettings() = runTest {
         val store = FlakyDataStore(failures = 1)

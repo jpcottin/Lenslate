@@ -42,6 +42,9 @@ class KeystoreSecretCipher(private val alias: String = "lenslate_settings") : Se
     } catch (_: IllegalArgumentException) {
         // Not Base64, or too short to hold an IV.
         null
+    } catch (_: RuntimeException) {
+        // ProviderException and friends: the Keystore itself failed; the key is undecryptable.
+        null
     }
 
     private fun key(): SecretKey {
