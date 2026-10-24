@@ -4,11 +4,16 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
+import java.io.IOException
 import com.jpcottin.lenslate.domain.EngineKind
 import com.jpcottin.lenslate.domain.Language
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -25,6 +30,22 @@ private class FakeDataStore(initial: Preferences = emptyPreferences()) : DataSto
     }
 }
 
+/** A store whose first [failures] reads throw, as a disk hiccup would, then behaves. */
+private class FlakyDataStore(private var failures: Int) : DataStore<Preferences> {
+    private val state = MutableStateFlow(emptyPreferences())
+    var attempts = 0
+        private set
+    override val data: Flow<Preferences> get() = flow {
+        attempts++
+        if (failures > 0) { failures--; throw IOException("disk hiccup") }
+        emitAll(state)
+    }
+    override suspend fun updateData(transform: suspend (t: Preferences) -> Preferences): Preferences {
+        state.value = transform(state.value)
+        return state.value
+    }
+}
+
 /** Reversible stand-in for the Keystore: "enc:" + the reversed secret. */
 private object FakeCipher : SecretCipher {
     override fun encrypt(plain: String) = "enc:" + plain.reversed()
@@ -32,6 +53,29 @@ private object FakeCipher : SecretCipher {
 }
 
 class SettingsRepositoryTest {
+    @Test
+    fun aReadErrorIsRetriedAndTheCollectorKeepsFollowingTheSettings() = runTest {
+        val store = FlakyDataStore(failures = 1)
+        val repo = SettingsRepository(store, FakeCipher)
+        val seen = mutableListOf<Settings>()
+        val collector = launch { repo.settings.collect { seen += it } }
+        advanceUntilIdle()
+        assertEquals(2, store.attempts)                       // the failed read, then the retry
+        repo.setLanguages(Language.JAPANESE, Language.GERMAN) // a later edit must still arrive
+        advanceUntilIdle()
+        assertEquals(Language.JAPANESE, seen.last().from)
+        assertEquals(Language.GERMAN, seen.last().to)
+        collector.cancel()
+    }
+
+    @Test
+    fun aStoreThatNeverReadsFallsBackToDefaults() = runTest {
+        val store = FlakyDataStore(failures = 10)
+        val s = SettingsRepository(store, FakeCipher).settings.first()
+        assertEquals(Language.DEFAULT_SOURCE, s.from)
+        assertEquals(4, store.attempts)                       // one read and three retries
+    }
+
     @Test
     fun defaults() = runTest {
         val s = SettingsRepository(FakeDataStore(), FakeCipher).settings.first()
