@@ -157,7 +157,8 @@ Every emulator leg boots with full diagnostics (`-verbose -show-kernel -debug-me
 `target=android-37.x` for the minor-versioned images.
 
 Two more workflows: [`release.yml`](.github/workflows/release.yml) runs the unit tests, builds
-the release APK and attaches the unsigned APK to a GitHub release on a version tag, and
+the minified release APK (signed with the debug keystore so it installs as is) and attaches it
+to a GitHub release on a version tag, and
 [`dependency-review.yml`](.github/workflows/dependency-review.yml) flags newly introduced
 dependencies with known vulnerabilities or disallowed licences on pull requests.
 
