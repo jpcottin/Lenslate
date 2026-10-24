@@ -30,6 +30,7 @@ import androidx.xr.projected.ProjectedContext
 import androidx.xr.projected.experimental.ExperimentalProjectedApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -140,4 +141,7 @@ class AppContainer(private val appContext: Context) {
     fun glassesConnected(): Flow<Boolean> =
         runCatching { ProjectedContext.isProjectedDeviceConnected(appContext, Dispatchers.Main) }
             .getOrElse { flowOf(false) }
+            // The stream itself can fail when the glasses drop mid-session; collected into a
+            // view-model scope that would be a crash, so it reads as "not connected" instead.
+            .catch { emit(false) }
 }

@@ -67,9 +67,14 @@ class SettingsRepository(
     }
 
     suspend fun setEngine(engine: EngineKind) = dataStore.edit { it[ENGINE] = engine.name }
-    suspend fun setGeminiApiKey(key: String) = dataStore.edit {
+    /** Stores [key] encrypted; false when the Keystore refused, in which case nothing changes. */
+    suspend fun setGeminiApiKey(key: String): Boolean {
         val trimmed = key.trim()
-        if (trimmed.isEmpty()) it.remove(GEMINI_API_KEY_ENCRYPTED) else it[GEMINI_API_KEY_ENCRYPTED] = cipher.encrypt(trimmed)
+        val encrypted = if (trimmed.isEmpty()) null else runCatching { cipher.encrypt(trimmed) }.getOrElse { return false }
+        dataStore.edit {
+            if (encrypted == null) it.remove(GEMINI_API_KEY_ENCRYPTED) else it[GEMINI_API_KEY_ENCRYPTED] = encrypted
+        }
+        return true
     }
     suspend fun setGeminiModel(model: String) = dataStore.edit { it[GEMINI_MODEL] = model.trim() }
     suspend fun setSpeakTranslations(enabled: Boolean) = dataStore.edit { it[SPEAK_TRANSLATIONS] = enabled }
@@ -79,7 +84,11 @@ class SettingsRepository(
     /** An undecryptable key (a settings file restored on another device) reads as "no key". */
     private fun decryptApiKey(stored: String): String {
         decrypted?.let { (cached, plain) -> if (cached == stored) return plain }
-        return cipher.decrypt(stored).orEmpty().also { decrypted = stored to it }
+        // The Keystore can fail in ways the cipher does not translate to "undecryptable"
+        // (a ProviderException on a bad day); thrown from here, inside the settings flow,
+        // that would end the flow for the process and crash its eager collector at start.
+        // An unreadable key is "no key configured" until the user pastes it again.
+        return runCatching { cipher.decrypt(stored) }.getOrNull().orEmpty().also { decrypted = stored to it }
     }
 
     private companion object {
