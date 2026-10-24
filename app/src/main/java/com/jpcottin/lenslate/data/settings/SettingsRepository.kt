@@ -12,6 +12,7 @@ import com.jpcottin.lenslate.domain.Language
 import androidx.datastore.preferences.core.emptyPreferences
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.retryWhen
 import kotlinx.coroutines.flow.map
 import java.io.IOException
 
@@ -40,6 +41,10 @@ class SettingsRepository(
     @Volatile private var decrypted: Pair<String, String>? = null
 
     val settings: Flow<Settings> = dataStore.data
+        // A read that fails is retried a few times: the collectors of this flow live as long
+        // as the app, and a flow that ends on one bad read would leave them detached from the
+        // settings for the rest of the process (toggles written but never observed).
+        .retryWhen { e, attempt -> e is IOException && attempt < MAX_READ_RETRIES }
         // An unreadable preferences file must never crash (or brick) the app: fall back to
         // defaults; the next successful edit rewrites the file.
         .catch { e -> if (e is IOException) emit(emptyPreferences()) else throw e }
@@ -78,6 +83,7 @@ class SettingsRepository(
     }
 
     private companion object {
+        private const val MAX_READ_RETRIES = 3L
         val FROM = stringPreferencesKey("from_language")
         val TO = stringPreferencesKey("to_language")
         val ENGINE = stringPreferencesKey("engine")
