@@ -1,6 +1,8 @@
 package com.jpcottin.lenslate
 
 import android.content.Context
+import android.content.Intent
+import android.speech.tts.TextToSpeech
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertFalse
@@ -24,4 +26,11 @@ class LenslateApplicationTest {
 
         assertTrue(cache.isDirectory)
     }
+
+    @Test
+    fun aTextToSpeechEngine_isVisibleToTheApp() {
+        val engines = context.packageManager.queryIntentServices(Intent(TextToSpeech.Engine.INTENT_ACTION_TTS_SERVICE), 0)
+        assertTrue("no TTS engine visible: declare it under <queries>", engines.isNotEmpty())
+    }
+
 }
