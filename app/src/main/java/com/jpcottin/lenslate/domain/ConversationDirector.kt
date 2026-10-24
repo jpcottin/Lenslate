@@ -1,5 +1,6 @@
 package com.jpcottin.lenslate.domain
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
@@ -39,7 +40,17 @@ class ConversationDirector(
             isSpeaking.first { !it }
             // Re-check: the user may have turned conversation mode off during playback.
             if (!conversationMode()) return@collect
-            if (direction() == (utterance.from to utterance.to)) setDirection(utterance.to, utterance.from)
+            if (direction() == (utterance.from to utterance.to)) {
+                // The swap is a settings write; a failure (a full disk) must not end this
+                // collector, which lives for the process: the next sentence tries again.
+                try {
+                    setDirection(utterance.to, utterance.from)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    // Swallowed on purpose: the next sentence tries again.
+                }
+            }
         }
     }
 }
