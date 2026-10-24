@@ -63,7 +63,7 @@ the glasses' microphone); the phone's *Listen* button uses the phone's.
 
 ### AppFunction
 
-The app exposes `translateText(text, fromLanguage?, toLanguage?)` through
+The app exposes `translateText(text, fromLanguage, toLanguage)` (an empty language means the app's current pair) through
 [AppFunctions](https://developer.android.com/develop/ai/appfunctions) so on-device agents and
 the Android system can translate without opening the UI (Android 16+). Language codes default
 to the pair selected in the app.
@@ -131,9 +131,9 @@ Emulator caveats observed with the current images:
 
 | Suite | Command | What it covers |
 |---|---|---|
-| Unit | `./gradlew :app:testDebugUnitTest` | `LiveTranslator` pipeline (partials, debounce, errors, mic hand-over, Read mode with fake camera/OCR), Gemini client against `MockWebServer`, settings mapping, model repository |
-| Screenshot | `./gradlew :app:validateDebugScreenshotTest` (`updateDebugScreenshotTest` to re-record) | Phone screens on phone/foldable/tablet (home, settings, read), glasses card at the lens' 450×394 dp (listening, reading, read result, errors) |
-| Instrumented | `./gradlew :app:connectedDebugAndroidTest` | Compose UI tests for both surfaces, the AppFunction handler, ML Kit OCR on a rendered sign, and end-to-end tests that inject a sentence / read a sign and check the on-device translation |
+| Unit | `./gradlew :app:testDebugUnitTest` | 92 tests: the `LiveTranslator` pipeline (partials, debounce, errors, mic hand-over, Read mode with fake camera/OCR), the conversation director, the translation speaker's engine lifecycle, the glasses microphone, transcript formatting, the speech sources, the Gemini client against `MockWebServer`, settings mapping and its read-error fallback, the model repository, languages |
+| Screenshot | `./gradlew :app:validateDebugScreenshotTest` (`updateDebugScreenshotTest` to re-record) | 16 previews: phone screens on phone/foldable/tablet/desktop (home, settings, read), glasses card at the lens' 450×394 dp (listening, reading, read result, errors) |
+| Instrumented | `./gradlew :app:connectedDebugAndroidTest` | 42 tests: Compose UI tests for both surfaces, the AppFunction handler, ML Kit OCR on a rendered sign, the Keystore-backed secret cipher, the Application wiring, and end-to-end tests that inject a sentence / read a sign and check the on-device translation |
 
 ### CI
 
@@ -145,7 +145,7 @@ findings without blocking a PR.
 | Job | What it does | Gates | Artifacts |
 |---|---|---|---|
 | **Unit Tests** | `testDebugUnitTest` and `lintDebug` | yes | `unit-test-results`, `lint-report` |
-| **Screenshot Tests** | `validateDebugScreenshotTest` against the recorded references | yes | `screenshot-test-report` |
+| **Screenshot Tests** | `validateDebugScreenshotTest` against the recorded references | yes | `screenshot-test-report` (on failure) |
 | **Release Build (R8)** | The minified release APK | yes | — |
 | **Instrumented Tests (API 36)** | `connectedDebugAndroidTest` on a `google_apis` x86\_64 emulator with `-gpu lavapipe` | yes | `instrumented-test-results-api-36` |
 | **Instrumented Tests (API 37.x)** | The same tests on the API 37.0, 37.1 and 37.2 `google_apis_ps16k` images (16 KB page size): 37.0 from the stable channel on lavapipe and from the canary channel on auto, 37.1 from the canary channel on lavapipe, 37.2 from the canary channel on lavapipe and auto | no | `instrumented-test-results-api-37.*-<suffix>` |
