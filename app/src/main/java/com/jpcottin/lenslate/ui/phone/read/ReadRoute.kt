@@ -58,7 +58,8 @@ fun ReadRoute(
             return@LaunchedEffect
         }
         runCatching {
-            provider.unbindAll()
+            // Bind only this screen's use cases: the provider is shared by the whole process,
+            // and unbindAll() would tear down a capture the glasses have in flight.
             provider.bindToLifecycle(lifecycleOwner, selector, preview, imageCapture)
             viewModel.imageCapture = imageCapture
         }.onFailure { cameraError = it.message ?: "Could not start the camera" }
@@ -73,12 +74,16 @@ fun ReadRoute(
     }
 
     val noText = stringResource(R.string.read_no_text)
+    // The pipeline's error is shared with Listen mode: only show it here once this screen
+    // has asked for a read, or a speech error from the home screen greets the viewfinder.
+    var attempted by remember { mutableStateOf(false) }
     ReadScreen(
         surfaceRequest = surfaceRequest,
         isReading = live.isReading,
-        error = cameraError ?: live.error?.takeIf { !live.isReading }?.let { if (it == LiveTranslator.NO_TEXT_FOUND) noText else it },
+        error = cameraError ?: live.error?.takeIf { attempted && !live.isReading }?.let { if (it == LiveTranslator.NO_TEXT_FOUND) noText else it },
         onCapture = {
             val capture = viewModel.imageCapture ?: return@ReadScreen
+            attempted = true
             viewModel.read(CameraXFrameCapture(context.appContainer.hostContext(), lifecycleOwner, capture))
         },
         onBack = onBack,

@@ -82,7 +82,9 @@ class GeminiTranslationEngine(
                 }
 
                 override fun onResponse(call: Call, response: Response) {
-                    if (cont.isActive) cont.resume(response) else response.close()
+                    // Closed by the cancellation handler if the coroutine is cancelled between
+                    // the check and the resume; a bare isActive check leaked the body then.
+                    if (cont.isActive) cont.resume(response) { response.close() } else response.close()
                 }
             })
         }
