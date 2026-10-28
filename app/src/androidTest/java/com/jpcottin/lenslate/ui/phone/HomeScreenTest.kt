@@ -41,6 +41,7 @@ class HomeScreenTest {
         onRead: () -> Unit = {},
         onShare: () -> Unit = {},
         onCopy: (Utterance) -> Unit = {},
+        onSetLanguages: (Language, Language) -> Unit = { _, _ -> },
     ) = composeTestRule.setContent {
         LenslateTheme {
             HomeScreen(
@@ -51,7 +52,7 @@ class HomeScreenTest {
                 launchError = null,
                 onToggleListening = onToggle,
                 onRead = onRead,
-                onSetLanguages = { _, _ -> },
+                onSetLanguages = onSetLanguages,
                 onSwapLanguages = onSwap,
                 onConversationModeChange = {},
                 onClearTranscript = {},
@@ -110,6 +111,28 @@ class HomeScreenTest {
         setContent(LiveTranslationState(), onSwap = { swapped = true })
         composeTestRule.onNodeWithContentDescription("Swap languages").performClick()
         assertTrue(swapped)
+    }
+
+    @Test
+    fun pickingTheOtherSidesLanguage_swapsThePair_insteadOfTranslatingALanguageIntoItself() {
+        var swaps = 0
+        val pairs = mutableListOf<Pair<Language, Language>>()
+        setContent(LiveTranslationState(), onSwap = { swaps++ }, onSetLanguages = { from, to -> pairs += from to to })
+        // The pair is FR → EN: choosing English as the source is a swap, not FR → EN with EN → EN.
+        composeTestRule.onNodeWithText("Français").performClick()
+        composeTestRule.onNodeWithText("English (EN)").performClick()
+        assertEquals(1, swaps)
+        assertEquals(emptyList<Pair<Language, Language>>(), pairs)
+        // Choosing French as the target is the same swap.
+        composeTestRule.onNodeWithText("English").performClick()
+        composeTestRule.onNodeWithText("Français (FR)").performClick()
+        assertEquals(2, swaps)
+        assertEquals(emptyList<Pair<Language, Language>>(), pairs)
+        // Any other language still sets the pair.
+        composeTestRule.onNodeWithText("Français").performClick()
+        composeTestRule.onNodeWithText("Español (ES)").performClick()
+        assertEquals(2, swaps)
+        assertEquals(listOf(Language.SPANISH to Language.ENGLISH), pairs)
     }
 
     @Test
