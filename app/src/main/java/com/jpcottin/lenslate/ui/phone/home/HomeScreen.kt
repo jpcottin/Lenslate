@@ -231,10 +231,13 @@ private fun LanguagePairCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            // Picking the other side's language swaps the pair: a language translated into
+            // itself would just echo every sentence (and conversation mode would turn around
+            // between two identical directions).
             LanguageDropdown(
                 label = stringResource(R.string.from_language),
                 selected = settings.from,
-                onSelect = { onSetLanguages(it, settings.to) },
+                onSelect = { if (it == settings.to) onSwap() else onSetLanguages(it, settings.to) },
                 modifier = Modifier.weight(1f),
             )
             IconButton(onClick = onSwap) {
@@ -243,7 +246,7 @@ private fun LanguagePairCard(
             LanguageDropdown(
                 label = stringResource(R.string.to_language),
                 selected = settings.to,
-                onSelect = { onSetLanguages(settings.from, it) },
+                onSelect = { if (it == settings.from) onSwap() else onSetLanguages(settings.from, it) },
                 modifier = Modifier.weight(1f),
             )
         }

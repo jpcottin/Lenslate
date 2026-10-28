@@ -29,7 +29,7 @@ Lenslate is a *hybrid* app, following the [AI glasses activity model](https://de
 
 | Surface | Activity | UI toolkit | Role |
 |---|---|---|---|
-| Phone | `MainActivity` | Material 3 (adaptive, Navigation 3) | Pick the language pair, manage offline models, choose the engine, read the transcript (copy a line or share it all), **Launch on glasses** |
+| Phone | `MainActivity` | Material 3 (adaptive, Navigation 3) | Pick the language pair (choosing the other side's language swaps the two), manage offline models, choose the engine, read the transcript (copy a line or share it all), **Launch on glasses** |
 | Glasses | `GlassesActivity` (`xr_projected`) | [Jetpack Compose Glimmer](https://developer.android.com/develop/xr/jetpack-xr-sdk/jetpack-compose-glimmer) | One bottom-aligned card: latest translation, original sentence underneath, `FR → EN` title chip; tap the touchpad to pause/resume listening (the card holds the focus), swipe to the camera icon and tap — or press the glasses’ hardware **camera button** — to read |
 
 Both surfaces observe the **same** `LiveTranslator` pipeline, so the phone shows live what the
@@ -133,7 +133,7 @@ Emulator caveats observed with the current images:
 |---|---|---|
 | Unit | `./gradlew :app:testDebugUnitTest` | 97 tests: the `LiveTranslator` pipeline (partials, debounce, errors, mic hand-over, Read mode with fake camera/OCR), the conversation director (including a failed direction swap), the translation speaker's engine lifecycle, the glasses microphone (including a permission granted later), transcript formatting, the speech sources, the Gemini client against `MockWebServer`, settings mapping, its read-error fallback and a Keystore failure, the model repository, languages |
 | Screenshot | `./gradlew :app:validateDebugScreenshotTest` (`updateDebugScreenshotTest` to re-record) | 16 previews: phone screens on phone/foldable/tablet/desktop (home, settings, read), glasses card at the lens' 450×394 dp (listening, reading, read result, errors) |
-| Instrumented | `./gradlew :app:connectedDebugAndroidTest` | 45 tests: Compose UI tests for both surfaces, the AppFunction handler, ML Kit OCR on a rendered sign, the Keystore-backed secret cipher, the Application wiring, and end-to-end tests that inject a sentence / read a sign and check the on-device translation |
+| Instrumented | `./gradlew :app:connectedDebugAndroidTest` | 46 tests: Compose UI tests for both surfaces, the AppFunction handler, ML Kit OCR on a rendered sign, the Keystore-backed secret cipher, the Application wiring, and end-to-end tests that inject a sentence / read a sign and check the on-device translation |
 
 ### CI
 
