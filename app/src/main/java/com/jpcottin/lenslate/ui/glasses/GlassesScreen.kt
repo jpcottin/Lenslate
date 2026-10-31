@@ -98,11 +98,15 @@ private fun TranslationCard(
     onRead: () -> Unit,
 ) {
     val speaking = live.partialSource.isNotEmpty()
+    val latest = live.latest
+    // A sentence whose translation is still on its way shows the same ellipsis as an interim
+    // hypothesis does, rather than a blank line until it arrives (a cloud engine takes a while).
     val translation = when {
         speaking -> live.partialTranslation.ifEmpty { "…" }
-        else -> live.latest?.translation ?: live.latest?.error ?: ""
+        latest == null -> ""
+        else -> latest.translation ?: latest.error ?: "…"
     }
-    val source = if (speaking) live.partialSource else live.latest?.source.orEmpty()
+    val source = if (speaking) live.partialSource else latest?.source.orEmpty()
     val status = when {
         live.isReading -> stringResource(R.string.reading)
         live.isListening && live.isPreparing -> stringResource(R.string.models_downloading, "${live.from.shortLabel} → ${live.to.shortLabel}")
@@ -126,7 +130,7 @@ private fun TranslationCard(
             leadingIcon = {
                 Icon(
                     imageVector = when {
-                        live.isReading || live.latest?.kind == UtteranceKind.READ && !speaking -> Icons.Rounded.PhotoCamera
+                        live.isReading || latest?.kind == UtteranceKind.READ && !speaking -> Icons.Rounded.PhotoCamera
                         live.isListening -> Icons.Rounded.Mic
                         else -> Icons.Rounded.MicOff
                     },

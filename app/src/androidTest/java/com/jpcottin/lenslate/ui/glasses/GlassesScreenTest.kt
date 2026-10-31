@@ -145,4 +145,11 @@ class GlassesScreenTest {
         composeTestRule.onNodeWithText("Hello").performClick()
         assertEquals(1, toggles)
     }
+
+    @Test
+    fun sentenceAwaitingItsTranslation_showsAnEllipsis_notABlankLine() {
+        setContent(LiveTranslationState(isListening = true, utterances = listOf(Utterance(1, "Bonjour"))))
+        composeTestRule.onNodeWithText("…").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Bonjour").assertIsDisplayed()
+    }
 }
