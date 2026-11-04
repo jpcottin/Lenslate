@@ -302,6 +302,56 @@ class LiveTranslatorTest {
     }
 
     @Test
+    fun translations_areEmittedInTheOrderTheSentencesWereSaid() = runTest {
+        // The first sentence's translation takes longer than the second's (a longer sentence, a
+        // slower cloud reply): the speaker must still hear them in the order they were said.
+        val engine = FakeTranslationEngine()
+        engine.delaysByText["Un"] = 500
+        engine.delaysByText["Deux"] = 10
+        engine.delaysByText["Trois"] = 20
+        val translator = translator(engine)
+
+        translator.translated.test {
+            translator.submit("Un")
+            translator.submit("Deux")
+            translator.submit("Trois")
+            advanceTimeBy(100)
+            expectNoEvents()
+            advanceUntilIdle()
+
+            assertEquals("Un", awaitItem().source)
+            assertEquals("Deux", awaitItem().source)
+            assertEquals("Trois", awaitItem().source)
+        }
+    }
+
+    @Test
+    fun aFailedTranslation_doesNotHoldBackTheOnesAfterIt() = runTest {
+        val engine = object : TranslationEngine {
+            override suspend fun prepare(from: Language, to: Language) = Unit
+            override suspend fun translate(text: String, from: Language, to: Language): String {
+                if (text == "Un") {
+                    kotlinx.coroutines.delay(500)
+                    throw TranslationException("Gemini error 503")
+                }
+                kotlinx.coroutines.delay(10)
+                return "[${from.code}→${to.code}] $text"
+            }
+        }
+        val translator = translator(engine)
+
+        translator.translated.test {
+            translator.submit("Un")
+            translator.submit("Deux")
+            advanceUntilIdle()
+
+            assertEquals("Deux", awaitItem().source)
+            expectNoEvents()
+            assertEquals("Gemini error 503", translator.state.value.utterances[0].error)
+        }
+    }
+
+    @Test
     fun clear_dropsTranscript() = runTest {
         val translator = translator()
         translator.submit("Un")

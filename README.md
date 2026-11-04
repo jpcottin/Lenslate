@@ -42,7 +42,8 @@ the glasses' microphone); the phone's *Listen* button uses the phone's.
 - **Listen** — continuous speech recognition in the source language (on-device when the phone
   has it, otherwise the default recognition service), sentence by sentence; interim hypotheses are
   translated live on-device. While a translation is spoken aloud the microphone is suspended
-  (half-duplex), so the app never hears its own voice and translates it again.
+  (half-duplex), so the app never hears its own voice and translates it again. Translations are
+  spoken in the order the sentences were said, even when a later one comes back first.
 - **Conversation mode** — a switch under the language pair on the phone. After each spoken
   sentence is translated (and, with sound on, spoken aloud), the direction reverses
   automatically, so two people can alternate without touching the swap button. The swap happens
@@ -131,7 +132,7 @@ Emulator caveats observed with the current images:
 
 | Suite | Command | What it covers |
 |---|---|---|
-| Unit | `./gradlew :app:testDebugUnitTest` | 97 tests: the `LiveTranslator` pipeline (partials, debounce, errors, mic hand-over, Read mode with fake camera/OCR), the conversation director (including a failed direction swap), the translation speaker's engine lifecycle, the glasses microphone (including a permission granted later), transcript formatting, the speech sources, the Gemini client against `MockWebServer`, settings mapping, its read-error fallback and a Keystore failure, the model repository, languages |
+| Unit | `./gradlew :app:testDebugUnitTest` | 99 tests: the `LiveTranslator` pipeline (partials, debounce, errors, speech order, mic hand-over, Read mode with fake camera/OCR), the conversation director (including a failed direction swap), the translation speaker's engine lifecycle, the glasses microphone (including a permission granted later), transcript formatting, the speech sources, the Gemini client against `MockWebServer`, settings mapping, its read-error fallback and a Keystore failure, the model repository, languages |
 | Screenshot | `./gradlew :app:validateDebugScreenshotTest` (`updateDebugScreenshotTest` to re-record) | 16 previews: phone screens on phone/foldable/tablet/desktop (home, settings, read), glasses card at the lens' 450×394 dp (listening, reading, read result, errors) |
 | Instrumented | `./gradlew :app:connectedDebugAndroidTest` | 47 tests: Compose UI tests for both surfaces, the AppFunction handler, ML Kit OCR on a rendered sign, the Keystore-backed secret cipher, the Application wiring, and end-to-end tests that inject a sentence / read a sign and check the on-device translation |
 
