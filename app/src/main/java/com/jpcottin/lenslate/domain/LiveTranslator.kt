@@ -73,8 +73,18 @@ class LiveTranslator(
 
     private val _translated = MutableSharedFlow<Utterance>(extraBufferCapacity = 16)
 
-    /** Emits every utterance once its translation is available (used for text-to-speech). */
+    /**
+     * Emits every utterance once its translation is available (used for text-to-speech), in the
+     * order the sentences were said: a translation that comes back before an earlier sentence's
+     * waits for it, so the speaker never reads the second sentence before the first.
+     */
     val translated: SharedFlow<Utterance> = _translated.asSharedFlow()
+
+    /** Utterances whose translation is in flight, oldest first; emission follows this order. */
+    private val awaitingEmission = ArrayDeque<Long>()
+
+    /** Translations that came back out of turn, by id, until the ones before them resolve. */
+    private val readyToEmit = mutableMapOf<Long, Utterance?>()
 
     private var listenJob: Job? = null
     private var partialJob: Job? = null
@@ -220,6 +230,7 @@ class LiveTranslator(
     }
 
     private fun translateUtterance(utterance: Utterance) {
+        awaitingEmission.addLast(utterance.id)
         scope.launch {
             val result = runCatching { engine().translate(utterance.source, utterance.from, utterance.to) }
             val translation = result.getOrNull()
@@ -234,7 +245,19 @@ class LiveTranslator(
                 )
             }
             // Emitted from the utterance itself: its row may have left the transcript meanwhile.
-            if (translation != null) _translated.tryEmit(utterance.copy(translation = translation))
+            emitInOrder(utterance.id, translation?.let { utterance.copy(translation = it) })
+        }
+    }
+
+    /**
+     * Records [utterance] (null when its translation failed) as resolved and emits every
+     * resolved utterance at the head of the queue. State is confined to [scope]'s dispatcher.
+     */
+    private fun emitInOrder(id: Long, utterance: Utterance?) {
+        readyToEmit[id] = utterance
+        while (awaitingEmission.isNotEmpty() && readyToEmit.containsKey(awaitingEmission.first())) {
+            val next = awaitingEmission.removeFirst()
+            readyToEmit.remove(next)?.let { _translated.tryEmit(it) }
         }
     }
 
