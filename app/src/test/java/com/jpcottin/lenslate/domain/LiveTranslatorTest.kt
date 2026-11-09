@@ -417,6 +417,43 @@ class LiveTranslatorTest {
     }
 
     @Test
+    fun readFailure_isFlaggedAsAReadError_aMicrophoneErrorIsNot() = runTest {
+        val source = FakeSpeechSource()
+        val translator = translator()
+        translator.start(source)
+        advanceUntilIdle()
+
+        translator.readText(FakeCapture(), FakeRecognizer(""))
+        assertEquals(LiveTranslator.NO_TEXT_FOUND, translator.state.value.error)
+        assertTrue(translator.state.value.isReadError)
+        assertTrue(translator.state.value.isListening)
+
+        source.emit(SpeechEvent.Error("Network error"))
+        advanceUntilIdle()
+        assertEquals("Network error", translator.state.value.error)
+        assertFalse(translator.state.value.isReadError)
+        translator.stop()
+    }
+
+    @Test
+    fun readError_isClearedByTheNextTranslatedSentence() = runTest {
+        val source = FakeSpeechSource()
+        val translator = translator()
+        translator.start(source)
+        advanceUntilIdle()
+        translator.readText(FakeCapture(fail = true), FakeRecognizer("ignored"))
+        assertEquals("Camera capture failed", translator.state.value.error)
+        assertTrue(translator.state.value.isReadError)
+
+        source.emit(SpeechEvent.Final("Bonjour"))
+        advanceUntilIdle()
+
+        assertNull(translator.state.value.error)
+        assertFalse(translator.state.value.isReadError)
+        translator.stop()
+    }
+
+    @Test
     fun readText_emitsTranslatedWithReadKind() = runTest {
         val translator = translator()
         translator.translated.test {
