@@ -53,7 +53,8 @@ the glasses' microphone); the phone's *Listen* button uses the phone's.
   (CameraX `ImageCapture`, bound only for the capture so nothing streams otherwise); on the phone,
   a viewfinder with a shutter. The snapshot goes through ML Kit Text Recognition v2 (Latin model,
   Japanese model for `ja`), lines are joined into one sentence and translated like speech. Read
-  results show a camera icon in the transcript.
+  results show a camera icon in the transcript. A read that finds no text says so on the lens
+  even while listening goes on, where a microphone hiccup would stay off the card.
 
 ### Translation engines
 
@@ -132,9 +133,9 @@ Emulator caveats observed with the current images:
 
 | Suite | Command | What it covers |
 |---|---|---|
-| Unit | `./gradlew :app:testDebugUnitTest` | 99 tests: the `LiveTranslator` pipeline (partials, debounce, errors, speech order, mic hand-over, Read mode with fake camera/OCR), the conversation director (including a failed direction swap), the translation speaker's engine lifecycle, the glasses microphone (including a permission granted later), transcript formatting, the speech sources, the Gemini client against `MockWebServer`, settings mapping, its read-error fallback and a Keystore failure, the model repository, languages |
-| Screenshot | `./gradlew :app:validateDebugScreenshotTest` (`updateDebugScreenshotTest` to re-record) | 16 previews: phone screens on phone/foldable/tablet/desktop (home, settings, read), glasses card at the lens' 450×394 dp (listening, reading, read result, errors) |
-| Instrumented | `./gradlew :app:connectedDebugAndroidTest` | 47 tests: Compose UI tests for both surfaces, the AppFunction handler, ML Kit OCR on a rendered sign, the Keystore-backed secret cipher, the Application wiring, and end-to-end tests that inject a sentence / read a sign and check the on-device translation |
+| Unit | `./gradlew :app:testDebugUnitTest` | 101 tests: the `LiveTranslator` pipeline (partials, debounce, errors, speech order, mic hand-over, Read mode with fake camera/OCR, a failed read told apart from a microphone error), the conversation director (including a failed direction swap), the translation speaker's engine lifecycle, the glasses microphone (including a permission granted later), transcript formatting, the speech sources, the Gemini client against `MockWebServer`, settings mapping, its read-error fallback and a Keystore failure, the model repository, languages |
+| Screenshot | `./gradlew :app:validateDebugScreenshotTest` (`updateDebugScreenshotTest` to re-record) | 20 previews: phone screens on phone/foldable/tablet/desktop (home, settings, read), glasses card at the lens' 450×394 dp (listening, reading, read result, errors) |
+| Instrumented | `./gradlew :app:connectedDebugAndroidTest` | 49 tests: Compose UI tests for both surfaces, the AppFunction handler, ML Kit OCR on a rendered sign, the Keystore-backed secret cipher, the Application wiring, and end-to-end tests that inject a sentence / read a sign and check the on-device translation |
 
 ### CI
 

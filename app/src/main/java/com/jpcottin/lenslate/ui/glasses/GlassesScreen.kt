@@ -185,7 +185,9 @@ private fun TranslationCard(
                         maxLines = 1,
                     )
                 }
-                if (error != null && (!live.isListening || translation.isEmpty() || cameraPermissionDenied)) {
+                // A microphone hiccup stays off the card while sentences keep flowing; the outcome
+                // of a read the user asked for (no text in the frame, capture failed) never does.
+                if (error != null && (!live.isListening || translation.isEmpty() || cameraPermissionDenied || live.isReadError)) {
                     Text(
                         stringResource(R.string.glasses_error_prefix, error),
                         style = GlimmerTheme.typography.caption,

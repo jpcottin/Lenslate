@@ -46,6 +46,12 @@ data class LiveTranslationState(
     val partialTranslation: String = "",
     val utterances: List<Utterance> = emptyList(),
     val error: String? = null,
+    /**
+     * [error] answers a Read-mode snapshot (nothing recognized, the capture failed) rather than
+     * coming from the microphone or a translation. The lens hides microphone hiccups while
+     * sentences keep flowing, but never the outcome of a read the user asked for.
+     */
+    val isReadError: Boolean = false,
     /** A Read-mode snapshot is being captured or recognized. */
     val isReading: Boolean = false,
 ) {
@@ -107,7 +113,7 @@ class LiveTranslator(
         currentSource = source
         val from = state.value.from
         val to = state.value.to
-        _state.update { it.copy(isListening = true, error = null) }
+        _state.update { it.copy(isListening = true, error = null, isReadError = false) }
         prepareJob?.cancel()
         // Both jobs are created lazily and started only once they are stored and observed: on an
         // immediate dispatcher a job that never suspends finishes inside start(), and its
@@ -117,7 +123,7 @@ class LiveTranslator(
             runCatching { engine().prepare(from, to) }
                 .onFailure { e ->
                     if (e is kotlinx.coroutines.CancellationException) throw e
-                    _state.update { it.copy(error = e.message ?: "Could not prepare the translation engine") }
+                    _state.update { it.copy(error = e.message ?: "Could not prepare the translation engine", isReadError = false) }
                 }
         }
         prepareJob = prepare
@@ -130,7 +136,7 @@ class LiveTranslator(
         }
         val listen = scope.launch(start = CoroutineStart.LAZY) {
             source.listen(from)
-                .catch { e -> _state.update { it.copy(error = e.message ?: "Speech recognition failed") } }
+                .catch { e -> _state.update { it.copy(error = e.message ?: "Speech recognition failed", isReadError = false) } }
                 .collect { event -> handle(event) }
         }
         listenJob = listen
@@ -162,7 +168,7 @@ class LiveTranslator(
     fun isListeningOn(source: SpeechSource): Boolean = currentSource === source
 
     fun clear() {
-        _state.update { it.copy(utterances = emptyList(), partialSource = "", partialTranslation = "", error = null) }
+        _state.update { it.copy(utterances = emptyList(), partialSource = "", partialTranslation = "", error = null, isReadError = false) }
     }
 
     /** Feeds a sentence as if it had been recognized; handy for typed input and tests. */
@@ -177,12 +183,12 @@ class LiveTranslator(
      */
     suspend fun readText(capture: FrameCapture, recognizer: TextRecognizer): String? {
         if (state.value.isReading) return null
-        _state.update { it.copy(isReading = true, error = null) }
+        _state.update { it.copy(isReading = true, error = null, isReadError = false) }
         try {
             val frame = capture.capture()
             val text = recognizer.recognize(frame, state.value.from).trim()
             if (text.isEmpty()) {
-                _state.update { it.copy(error = NO_TEXT_FOUND) }
+                _state.update { it.copy(error = NO_TEXT_FOUND, isReadError = true) }
                 return null
             }
             // OCR keeps line breaks; a sign reads better as one sentence per paragraph.
@@ -191,7 +197,7 @@ class LiveTranslator(
             return normalized
         } catch (e: Exception) {
             if (e is kotlinx.coroutines.CancellationException) throw e
-            _state.update { it.copy(error = e.message ?: "Could not read text") }
+            _state.update { it.copy(error = e.message ?: "Could not read text", isReadError = true) }
             return null
         } finally {
             _state.update { it.copy(isReading = false) }
@@ -200,7 +206,7 @@ class LiveTranslator(
 
     private fun handle(event: SpeechEvent) {
         when (event) {
-            SpeechEvent.Ready -> _state.update { it.copy(error = null) }
+            SpeechEvent.Ready -> _state.update { it.copy(error = null, isReadError = false) }
             is SpeechEvent.Partial -> {
                 // A blank partial withdraws the current hypothesis (mic muted mid-sentence).
                 _state.update {
@@ -216,7 +222,7 @@ class LiveTranslator(
                 _state.update { it.copy(partialSource = "", partialTranslation = "") }
                 addUtterance(event.text, UtteranceKind.SPOKEN)
             }
-            is SpeechEvent.Error -> _state.update { it.copy(error = event.message) }
+            is SpeechEvent.Error -> _state.update { it.copy(error = event.message, isReadError = false) }
         }
     }
 
@@ -242,6 +248,7 @@ class LiveTranslator(
                     },
                     // A successful translation clears the banner; a failure sets it.
                     error = error ?: if (translation != null) null else st.error,
+                    isReadError = error == null && translation == null && st.isReadError,
                 )
             }
             // Emitted from the utterance itself: its row may have left the transcript meanwhile.

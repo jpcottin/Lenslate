@@ -108,6 +108,34 @@ class GlassesScreenTest {
     }
 
     @Test
+    fun failedRead_whileListeningWithATranslationShown_isStillExplained() {
+        setContent(
+            LiveTranslationState(
+                isListening = true,
+                utterances = listOf(Utterance(1, "Bonjour", "Hello")),
+                error = LiveTranslator.NO_TEXT_FOUND,
+                isReadError = true,
+            )
+        )
+        // The read was asked for: its outcome must not hide behind the running transcript.
+        composeTestRule.onNodeWithText("Hello").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Error: No text found. Try getting closer or improving the light.").assertIsDisplayed()
+    }
+
+    @Test
+    fun microphoneHiccup_whileATranslationIsShown_staysOffTheCard() {
+        setContent(
+            LiveTranslationState(
+                isListening = true,
+                utterances = listOf(Utterance(1, "Bonjour", "Hello")),
+                error = "Network error",
+            )
+        )
+        composeTestRule.onNodeWithText("Hello").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Error: Network error").assertDoesNotExist()
+    }
+
+    @Test
     fun tappingCardWhileReading_doesNotToggleTheMicrophone() {
         var toggles = 0
         setContent(LiveTranslationState(isListening = true, isReading = true), onToggle = { toggles++ })
