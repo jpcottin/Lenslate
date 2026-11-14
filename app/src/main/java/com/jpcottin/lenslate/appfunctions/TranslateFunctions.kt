@@ -40,8 +40,8 @@ class TranslateFunctions {
      * @param toLanguage ISO 639-1 code of the target language: en, fr, es, de or ja. Pass an
      * empty string to use the target language currently selected in the app.
      * @return The [TranslationResult].
-     * @throws AppFunctionInvalidArgumentException If [text] is empty or a language code is not
-     * supported.
+     * @throws AppFunctionInvalidArgumentException If [text] is empty, a language code is not
+     * supported, or both languages resolve to the same one.
      * @throws AppFunctionAppUnknownException If the translation engine fails, for example when
      * an offline model cannot be downloaded or the Gemini API key is missing.
      */

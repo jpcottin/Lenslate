@@ -17,6 +17,13 @@ internal class TranslateTextHandler(
         if (text.isBlank()) throw AppFunctionInvalidArgumentException("text must not be empty")
         val from = resolve(fromLanguage, settings.from, "fromLanguage")
         val to = resolve(toLanguage, settings.to, "toLanguage")
+        // The engines hand a same-language request back untouched; an agent would take that
+        // for a translation. The app's own UI never forms such a pair, so say so instead.
+        if (from == to) {
+            throw AppFunctionInvalidArgumentException(
+                "fromLanguage and toLanguage must differ (both \"${from.code}\")"
+            )
+        }
         val translated = try {
             engine.translate(text, from, to)
         } catch (e: kotlinx.coroutines.CancellationException) {

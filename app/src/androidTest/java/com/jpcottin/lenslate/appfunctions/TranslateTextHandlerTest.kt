@@ -60,6 +60,29 @@ class TranslateTextHandlerTest {
     }
 
     @Test
+    fun sameLanguage_isInvalid_notAnUntouchedTranslation() = runTest {
+        try {
+            TranslateTextHandler(settings, FakeTranslationEngine()).handle("Bonjour", "fr", "FR")
+            fail()
+        } catch (e: AppFunctionInvalidArgumentException) {
+            assertTrue(e.message!!.contains("fromLanguage"))
+            assertTrue(e.message!!.contains("toLanguage"))
+            assertTrue(e.message!!.contains("\"fr\""))
+        }
+    }
+
+    @Test
+    fun sameLanguage_throughTheAppsDefault_isInvalid() = runTest {
+        // The app's pair is de → ja: asking for "de" as the target meets the default source.
+        try {
+            TranslateTextHandler(settings, FakeTranslationEngine()).handle("Hallo", "", "de")
+            fail()
+        } catch (e: AppFunctionInvalidArgumentException) {
+            assertTrue(e.message!!.contains("\"de\""))
+        }
+    }
+
+    @Test
     fun engineFailure_isReportedAsAppUnknown() = runTest {
         val engine = FakeTranslationEngine(failWith = TranslationException("Add a Gemini API key"))
         try {
