@@ -68,7 +68,8 @@ the glasses' microphone); the phone's *Listen* button uses the phone's.
 The app exposes `translateText(text, fromLanguage, toLanguage)` (an empty language means the app's current pair) through
 [AppFunctions](https://developer.android.com/develop/ai/appfunctions) so on-device agents and
 the Android system can translate without opening the UI (Android 16+). Language codes default
-to the pair selected in the app.
+to the pair selected in the app. A pair that resolves to one and the same language is rejected as
+an invalid argument rather than answered with the text untouched.
 
 ## Development
 
@@ -135,7 +136,7 @@ Emulator caveats observed with the current images:
 |---|---|---|
 | Unit | `./gradlew :app:testDebugUnitTest` | 101 tests: the `LiveTranslator` pipeline (partials, debounce, errors, speech order, mic hand-over, Read mode with fake camera/OCR, a failed read told apart from a microphone error), the conversation director (including a failed direction swap), the translation speaker's engine lifecycle, the glasses microphone (including a permission granted later), transcript formatting, the speech sources, the Gemini client against `MockWebServer`, settings mapping, its read-error fallback and a Keystore failure, the model repository, languages |
 | Screenshot | `./gradlew :app:validateDebugScreenshotTest` (`updateDebugScreenshotTest` to re-record) | 20 previews: phone screens on phone/foldable/tablet/desktop (home, settings, read), glasses card at the lens' 450×394 dp (listening, reading, read result, errors) |
-| Instrumented | `./gradlew :app:connectedDebugAndroidTest` | 49 tests: Compose UI tests for both surfaces, the AppFunction handler, ML Kit OCR on a rendered sign, the Keystore-backed secret cipher, the Application wiring, and end-to-end tests that inject a sentence / read a sign and check the on-device translation |
+| Instrumented | `./gradlew :app:connectedDebugAndroidTest` | 51 tests: Compose UI tests for both surfaces, the AppFunction handler, ML Kit OCR on a rendered sign, the Keystore-backed secret cipher, the Application wiring, and end-to-end tests that inject a sentence / read a sign and check the on-device translation |
 
 ### CI
 
