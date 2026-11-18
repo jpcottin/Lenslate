@@ -398,6 +398,18 @@ class LiveTranslatorTest {
     }
 
     @Test
+    fun readText_joinsJapaneseLinesWithoutSpaces() = runTest {
+        val translator = translator()
+        translator.setLanguages(Language.JAPANESE, Language.ENGLISH)
+
+        val text = translator.readText(FakeCapture(), FakeRecognizer("非常口\n  この先 \n"))
+        advanceUntilIdle()
+
+        assertEquals("非常口この先", text)
+        assertEquals("[ja→en] 非常口この先", translator.state.value.latest!!.translation)
+    }
+
+    @Test
     fun readText_reportsNoTextFound() = runTest {
         val translator = translator()
         val text = translator.readText(FakeCapture(), FakeRecognizer("  \n "))
