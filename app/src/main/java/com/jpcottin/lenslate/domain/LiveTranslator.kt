@@ -186,13 +186,16 @@ class LiveTranslator(
         _state.update { it.copy(isReading = true, error = null, isReadError = false) }
         try {
             val frame = capture.capture()
-            val text = recognizer.recognize(frame, state.value.from).trim()
+            val language = state.value.from
+            val text = recognizer.recognize(frame, language).trim()
             if (text.isEmpty()) {
                 _state.update { it.copy(error = NO_TEXT_FOUND, isReadError = true) }
                 return null
             }
-            // OCR keeps line breaks; a sign reads better as one sentence per paragraph.
-            val normalized = text.lines().map { it.trim() }.filter { it.isNotEmpty() }.joinToString(" ")
+            // OCR keeps line breaks; a sign reads better as one sentence per paragraph. Japanese
+            // writes no spaces between words, so its lines join with nothing in between.
+            val separator = if (language == Language.JAPANESE) "" else " "
+            val normalized = text.lines().map { it.trim() }.filter { it.isNotEmpty() }.joinToString(separator)
             addUtterance(normalized, UtteranceKind.READ)
             return normalized
         } catch (e: Exception) {
