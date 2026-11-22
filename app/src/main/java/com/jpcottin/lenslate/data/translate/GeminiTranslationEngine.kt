@@ -40,7 +40,9 @@ class GeminiTranslationEngine(
         if (from == to || text.isBlank()) return text
         val key = apiKey().trim()
         if (key.isEmpty()) throw TranslationException("Add a Gemini API key in Settings to use the Gemini engine")
-        val modelName = model().trim().ifEmpty { BuildConfig.GEMINI_DEFAULT_MODEL }
+        // The API lists its models as "models/<name>"; a name pasted from there is the same model.
+        val modelName = model().trim().removePrefix(MODEL_RESOURCE_PREFIX).trim()
+            .ifEmpty { BuildConfig.GEMINI_DEFAULT_MODEL }
         if (!modelName.matches(MODEL_NAME_REGEX)) {
             throw TranslationException("Invalid Gemini model name: \"$modelName\"")
         }
@@ -107,6 +109,7 @@ class GeminiTranslationEngine(
 
     companion object {
         private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
+        private const val MODEL_RESOURCE_PREFIX = "models/"
         private val MODEL_NAME_REGEX = Regex("[A-Za-z0-9._-]+")
 
         fun prompt(text: String, from: Language, to: Language): String =
