@@ -62,7 +62,7 @@ the glasses' microphone); the phone's *Listen* button uses the phone's.
 | Engine | Where | Notes |
 |---|---|---|
 | **On-device** (default) | ML Kit Translation | Private and offline. ~30 MB per language, downloaded on first use or from *Settings ▸ Offline translation models*. Interim (partial) sentences are translated live. |
-| **Gemini** (optional) | Gemini API | Better fluency. Enable it in *Settings*, paste your own API key (from [AI Studio](https://aistudio.google.com)), optionally change the model (default `gemini-3.5-flash-lite`, the fastest; `gemini-3.8-flash` trades latency for quality). Only final sentences are sent. |
+| **Gemini** (optional) | Gemini API | Better fluency. Enable it in *Settings*, paste your own API key (from [AI Studio](https://aistudio.google.com)), optionally change the model (default `gemini-3.5-flash-lite`, the fastest; `gemini-3.8-flash` trades latency for quality; a name copied with its `models/` prefix works too). Only final sentences are sent. |
 
 ### AppFunction
 
@@ -135,7 +135,7 @@ Emulator caveats observed with the current images:
 
 | Suite | Command | What it covers |
 |---|---|---|
-| Unit | `./gradlew :app:testDebugUnitTest` | 102 tests: the `LiveTranslator` pipeline (partials, debounce, errors, speech order, mic hand-over, Read mode with fake camera/OCR, a failed read told apart from a microphone error), the conversation director (including a failed direction swap), the translation speaker's engine lifecycle, the glasses microphone (including a permission granted later), transcript formatting, the speech sources, the Gemini client against `MockWebServer`, settings mapping, its read-error fallback and a Keystore failure, the model repository, languages |
+| Unit | `./gradlew :app:testDebugUnitTest` | 104 tests: the `LiveTranslator` pipeline (partials, debounce, errors, speech order, mic hand-over, Read mode with fake camera/OCR, a failed read told apart from a microphone error), the conversation director (including a failed direction swap), the translation speaker's engine lifecycle, the glasses microphone (including a permission granted later), transcript formatting, the speech sources, the Gemini client against `MockWebServer`, settings mapping, its read-error fallback and a Keystore failure, the model repository, languages |
 | Screenshot | `./gradlew :app:validateDebugScreenshotTest` (`updateDebugScreenshotTest` to re-record) | 20 previews: phone screens on phone/foldable/tablet/desktop (home, settings, read), glasses card at the lens' 450×394 dp (listening, reading, read result, errors) |
 | Instrumented | `./gradlew :app:connectedDebugAndroidTest` | 51 tests: Compose UI tests for both surfaces, the AppFunction handler, ML Kit OCR on a rendered sign, the Keystore-backed secret cipher, the Application wiring, and end-to-end tests that inject a sentence / read a sign and check the on-device translation |
 

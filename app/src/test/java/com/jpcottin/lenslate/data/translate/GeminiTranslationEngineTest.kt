@@ -110,4 +110,24 @@ class GeminiTranslationEngineTest {
         engine().translate("Salut", Language.FRENCH, Language.ENGLISH)
         assertTrue(server.takeRequest().url.encodedPath.contains("models/gemini-3.5-flash-lite:"))
     }
+
+    @Test
+    fun modelPastedWithTheModelsPrefix_isTheSameModel() = runTest {
+        model = " models/gemini-3.8-flash "
+        server.enqueue(MockResponse(body = """{"candidates":[{"content":{"parts":[{"text":"Hi"}]}}]}"""))
+        assertEquals("Hi", engine().translate("Salut", Language.FRENCH, Language.ENGLISH))
+        assertEquals("/v1beta/models/gemini-3.8-flash:generateContent", server.takeRequest().url.encodedPath)
+    }
+
+    @Test
+    fun modelWithAnotherPath_isStillRejected() = runTest {
+        model = "tunedModels/../gemini-3.8-flash"
+        try {
+            engine().translate("Salut", Language.FRENCH, Language.ENGLISH)
+            fail("expected TranslationException")
+        } catch (e: TranslationException) {
+            assertTrue(e.message!!.contains("Invalid Gemini model name"))
+        }
+        assertEquals(0, server.requestCount)
+    }
 }
